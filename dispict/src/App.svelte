@@ -18,14 +18,7 @@
   class="fixed z-50 top-0 left-0 right-0 px-4 py-2 text-xs sm:text-sm bg-white/80 backdrop-blur border-b border-gray-200"
 >
   <div class="max-w-3xl mx-auto text-gray-700">
-    <span class="font-medium">Merlian demo</span> — powered by
-    <a
-      class="underline underline-offset-2"
-      target="_blank"
-      rel="noopener noreferrer"
-      href="https://github.com/ekzhang/dispict"
-      >Dispict</a
-    > (MIT). Demo artworks/data from
+    <span class="font-medium">Merlian demo</span> — demo artworks/data from
     <a
       class="underline underline-offset-2"
       target="_blank"
