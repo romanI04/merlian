@@ -69,6 +69,19 @@ source .venv/bin/activate
 python merlian.py reset
 ```
 
+## Local API (for UI integration)
+
+```bash
+source .venv/bin/activate
+uvicorn server:app --reload --port 8008
+```
+
+Endpoints:
+- `GET /health`
+- `GET /status`
+- `POST /index`  (JSON: `{ "folder": "~/Desktop", "ocr": true }`)
+- `POST /search` (JSON: `{ "query": "error 403", "k": 10 }`)
+
 ### Notes
 - Index artifacts are stored under `engine/.merlian/` (repo-local for now).
 - This is not optimized; it’s a validation harness.
