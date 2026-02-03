@@ -6,16 +6,25 @@
 ## Today
 - Repo scaffold created
 - README written with plan + blockers + GitHub workflow
+- Imported upstream Dispict into `dispict/` (git subtree, squashed)
+- Verified Dispict frontend runs locally
 
 ## Next step
-- Create GitHub repo `romanI04/merlian`
-- Import/fork Dispict code as starting point
-- Run locally and document setup
+- Add minimal Merlian rebrand + demo dataset attribution banner in UI
+- Decide whether we keep Dispict as `dispict/` or move to repo root once rebranding begins
 
 ## Blockers
 - Confirm dataset / image usage terms if we use Harvard demo data.
 
 ## Verification checklist
-- Demo runs locally (frontend + backend)
-- Simple query returns results
-- Clear attribution displayed
+- [x] Dispict frontend runs locally
+- [ ] Simple query returns results (requires live backend via Modal)
+- [ ] Clear attribution displayed
+
+## Local run (Dispict)
+```bash
+cd ~/clawd/projects/merlian/dispict
+npm install
+npm run dev
+# open http://127.0.0.1:5173
+```
