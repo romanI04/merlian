@@ -241,22 +241,65 @@ def index(folder: Path, device: str, ocr: bool):
     )
     model_name, pretrained, model, preprocess, tokenizer = load_model(device=device)
 
-    # For the thin-slice MVP, we rebuild embeddings from scratch.
-    # This avoids native-library conflicts (e.g., OpenMP) and keeps behavior predictable.
-    meta = {"model": {"name": model_name, "pretrained": pretrained}, "paths": []}
+    # Incremental indexing (single-folder MVP):
+    # - skip unchanged files
+    # - update changed files in-place
+    # - append new files
+    # - drop deleted files
+
+    meta = {"model": {"name": model_name, "pretrained": pretrained}, "paths": [], "root": str(folder)}
+    embs_existing = load_embeddings(paths.embeddings)
+
+    if paths.meta.exists() and embs_existing is not None:
+        try:
+            meta = json.loads(paths.meta.read_text())
+        except Exception:
+            meta = {"model": {"name": model_name, "pretrained": pretrained}, "paths": [], "root": str(folder)}
+
+    meta.setdefault("model", {"name": model_name, "pretrained": pretrained})
+    meta["model"] = {"name": model_name, "pretrained": pretrained}
+    meta["root"] = str(folder)
+
+    paths_list: List[str] = list(meta.get("paths", []))
+    if embs_existing is None or len(paths_list) != embs_existing.shape[0]:
+        # If anything is inconsistent, start fresh.
+        paths_list = []
+        embs_existing = None
+
+    seen: set[str] = set()
+    path_to_idx = {p: i for i, p in enumerate(paths_list)}
 
     images = list(iter_images(folder))
     use_tqdm = sys.stderr.isatty()
     iterator = tqdm(images, desc="images") if use_tqdm else images
 
-    vecs: List[np.ndarray] = []
+    # Work on a mutable embeddings store.
+    if embs_existing is None:
+        vecs: List[np.ndarray] = []
+    else:
+        vecs = [embs_existing[i] for i in range(embs_existing.shape[0])]
+
+    added = 0
+    updated = 0
+    skipped = 0
 
     for i, p in enumerate(iterator, start=1):
         if not use_tqdm and i % 25 == 0:
             console.print(f"… processed {i}/{len(images)}")
 
         p_str = str(p)
+        seen.add(p_str)
         mtime, size = get_file_stats(p)
+
+        # Skip unchanged if we have it indexed.
+        row = conn.execute(
+            "SELECT mtime, size_bytes FROM assets WHERE path=?",
+            (p_str,),
+        ).fetchone()
+        if row is not None and p_str in path_to_idx:
+            if float(row[0]) == float(mtime) and int(row[1]) == int(size):
+                skipped += 1
+                continue
 
         vec = image_embedding(model, preprocess, device, p)
         if vec is None:
@@ -289,8 +332,29 @@ def index(folder: Path, device: str, ocr: bool):
                 "INSERT INTO ocr_fts(path, ocr_text) VALUES(?, ?)", (p_str, ocr_txt)
             )
 
-        meta["paths"].append(p_str)
-        vecs.append(vec)
+        if p_str in path_to_idx:
+            vecs[path_to_idx[p_str]] = vec
+            updated += 1
+        else:
+            path_to_idx[p_str] = len(paths_list)
+            paths_list.append(p_str)
+            vecs.append(vec)
+            added += 1
+
+    # Drop paths that no longer exist under folder.
+    removed = 0
+    if paths_list:
+        keep_indices = [i for i, p in enumerate(paths_list) if p in seen]
+        removed = len(paths_list) - len(keep_indices)
+        if removed > 0:
+            removed_paths = [p for p in paths_list if p not in seen]
+            # Remove from DB + FTS.
+            for rp in removed_paths:
+                conn.execute("DELETE FROM assets WHERE path=?", (rp,))
+                conn.execute("DELETE FROM ocr_fts WHERE path=?", (rp,))
+
+            paths_list = [paths_list[i] for i in keep_indices]
+            vecs = [vecs[i] for i in keep_indices]
 
     conn.commit()
 
@@ -299,9 +363,12 @@ def index(folder: Path, device: str, ocr: bool):
 
     embs = np.stack(vecs).astype("float32")
     np.save(paths.embeddings, embs)
+    meta["paths"] = paths_list
     paths.meta.write_text(json.dumps(meta, indent=2))
 
-    console.print(f"[green]Done[/green]. Embedded {embs.shape[0]} images.")
+    console.print(
+        f"[green]Done[/green]. Total {embs.shape[0]} images. +{added} new, ~{updated} updated, -{removed} removed, ={skipped} unchanged."
+    )
     console.print(f"Embeddings: {paths.embeddings}")
     console.print(f"DB:         {paths.db}")
 
@@ -587,6 +654,41 @@ def search(
         subprocess.run(["open", target_open], check=False)
     elif target_reveal:
         subprocess.run(["open", "-R", target_reveal], check=False)
+
+
+@cli.command()
+def status():
+    """Show current index status."""
+    paths = get_dbpaths()
+
+    if not paths.root.exists() or not paths.meta.exists() or not paths.db.exists():
+        console.print("No index found. Run: merlian index <folder>")
+        return
+
+    meta = json.loads(paths.meta.read_text())
+    root = meta.get("root")
+    model = meta.get("model", {})
+    embs = load_embeddings(paths.embeddings)
+    n_embs = int(embs.shape[0]) if embs is not None else 0
+
+    conn = sqlite3.connect(paths.db)
+    total = conn.execute("SELECT count(*) FROM assets").fetchone()[0]
+    with_ocr = conn.execute(
+        "SELECT count(*) FROM assets WHERE length(coalesce(ocr_text,'')) > 0"
+    ).fetchone()[0]
+
+    table = Table(title="Merlian index status")
+    table.add_column("field")
+    table.add_column("value")
+    table.add_row("root", str(root))
+    table.add_row("model", f"{model.get('name')} / {model.get('pretrained')}")
+    table.add_row("assets (db)", str(total))
+    table.add_row("with OCR", str(with_ocr))
+    table.add_row("embeddings", str(n_embs))
+    table.add_row("db path", str(paths.db))
+    table.add_row("embeddings path", str(paths.embeddings))
+
+    console.print(table)
 
 
 @cli.command()

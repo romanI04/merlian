@@ -18,7 +18,12 @@ pip install -r requirements.txt
 
 ```bash
 source .venv/bin/activate
-python merlian.py index ~/Desktop  # uses MPS if available
+
+# first run (builds index)
+python merlian.py index ~/Desktop
+
+# subsequent runs are incremental (fast): only new/changed files are processed
+python merlian.py index ~/Desktop
 ```
 
 ### macOS permissions note
@@ -45,6 +50,13 @@ python merlian.py search "red sneaker" --k 10 --reveal 3
 
 # force OCR-only search (great for text-heavy screenshots)
 python merlian.py search "RESOLV" --k 10 --mode ocr --open 1
+```
+
+## Status
+
+```bash
+source .venv/bin/activate
+python merlian.py status
 ```
 
 ## Reset
