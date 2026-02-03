@@ -5,3 +5,7 @@ rich>=13.7
 click>=8.1
 open-clip-torch>=2.24.0
 torch>=2.2
+
+# macOS OCR (Apple Vision)
+pyobjc-core>=10.0; platform_system == "Darwin"
+pyobjc-framework-Vision>=10.0; platform_system == "Darwin"

@@ -33,13 +33,18 @@ As a quick workaround, copy a few images into a folder under this repo (e.g. `~/
 
 ```bash
 source .venv/bin/activate
-python merlian.py search "red sneaker" --k 10  # uses MPS if available
+
+# hybrid ranking (CLIP + OCR) by default
+python merlian.py search "red sneaker" --k 10
 
 # open the top result
 python merlian.py search "red sneaker" --k 10 --open 1
 
 # reveal result #3 in Finder
 python merlian.py search "red sneaker" --k 10 --reveal 3
+
+# force OCR-only search (great for text-heavy screenshots)
+python merlian.py search "RESOLV" --k 10 --mode ocr --open 1
 ```
 
 ## Reset

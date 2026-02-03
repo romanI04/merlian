@@ -27,6 +27,7 @@ from rich.table import Table
 from tqdm import tqdm
 import sys
 import subprocess
+import re
 
 console = Console()
 
@@ -66,10 +67,17 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
             size_bytes INTEGER NOT NULL,
             width INTEGER,
             height INTEGER,
+            ocr_text TEXT,
             indexed_at TEXT NOT NULL
         );
         """
     )
+
+    # Lightweight migration for older DBs.
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(assets)").fetchall()]
+    if "ocr_text" not in cols:
+        conn.execute("ALTER TABLE assets ADD COLUMN ocr_text TEXT")
+
     conn.commit()
 
 
@@ -108,6 +116,57 @@ def image_embedding(
         feats = feats / feats.norm(dim=-1, keepdim=True)
         vec = feats.detach().cpu().numpy().astype("float32")[0]
         return vec
+
+
+def ocr_text_apple_vision(image_path: Path) -> str:
+    """Extract text using Apple Vision OCR (macOS only).
+
+    Returns empty string if OCR is unavailable or fails.
+    """
+
+    try:
+        from Foundation import NSURL
+        from Vision import (
+            VNImageRequestHandler,
+            VNRecognizeTextRequest,
+        )
+        from Quartz import CGImageSourceCreateWithURL, CGImageSourceCreateImageAtIndex
+
+        url = NSURL.fileURLWithPath_(str(image_path))
+        src = CGImageSourceCreateWithURL(url, None)
+        if src is None:
+            return ""
+        cg_img = CGImageSourceCreateImageAtIndex(src, 0, None)
+        if cg_img is None:
+            return ""
+
+        out: list[str] = []
+
+        def handler(request, error):
+            if error is not None:
+                return
+            for obs in request.results() or []:
+                top = obs.topCandidates_(1)
+                if top and len(top) > 0:
+                    out.append(str(top[0].string()))
+
+        req = VNRecognizeTextRequest.alloc().initWithCompletionHandler_(handler)
+        # Practical defaults for screenshots.
+        req.setRecognitionLevel_(1)  # Accurate
+        req.setUsesLanguageCorrection_(True)
+
+        img_handler = VNImageRequestHandler.alloc().initWithCGImage_options_(
+            cg_img, None
+        )
+        ok = img_handler.performRequests_error_([req], None)
+        if not ok:
+            return ""
+
+        text = "\n".join(out)
+        return text.strip()
+
+    except Exception:
+        return ""
 
 
 def text_embedding(model, tokenizer, device: str, query: str) -> np.ndarray:
@@ -150,7 +209,13 @@ def cli():
     default="auto",
     show_default=True,
 )
-def index(folder: Path, device: str):
+@click.option(
+    "--ocr/--no-ocr",
+    default=True,
+    show_default=True,
+    help="Extract text from images using Apple Vision OCR (macOS).",
+)
+def index(folder: Path, device: str, ocr: bool):
     """Index all images under FOLDER."""
 
     paths = get_dbpaths()
@@ -162,7 +227,9 @@ def index(folder: Path, device: str):
     if device == "auto":
         device = "mps" if torch.backends.mps.is_available() else "cpu"
 
-    console.print(f"[bold]Indexing[/bold] {folder}  ([dim]{device}[/dim])")
+    console.print(
+        f"[bold]Indexing[/bold] {folder}  ([dim]{device}[/dim], ocr={'on' if ocr else 'off'})"
+    )
     model_name, pretrained, model, preprocess, tokenizer = load_model(device=device)
 
     # For the thin-slice MVP, we rebuild embeddings from scratch.
@@ -189,18 +256,21 @@ def index(folder: Path, device: str):
         w, h = get_image_size(p)
         now = datetime.utcnow().isoformat()
 
+        ocr_txt = ocr_text_apple_vision(p) if ocr else ""
+
         conn.execute(
             """
-            INSERT INTO assets(path, mtime, size_bytes, width, height, indexed_at)
-            VALUES(?, ?, ?, ?, ?, ?)
+            INSERT INTO assets(path, mtime, size_bytes, width, height, ocr_text, indexed_at)
+            VALUES(?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(path) DO UPDATE SET
               mtime=excluded.mtime,
               size_bytes=excluded.size_bytes,
               width=excluded.width,
               height=excluded.height,
+              ocr_text=excluded.ocr_text,
               indexed_at=excluded.indexed_at
             """,
-            (p_str, mtime, size, w, h, now),
+            (p_str, mtime, size, w, h, ocr_txt, now),
         )
 
         meta["paths"].append(p_str)
@@ -230,6 +300,20 @@ def index(folder: Path, device: str):
     show_default=True,
 )
 @click.option(
+    "--mode",
+    type=click.Choice(["clip", "ocr", "hybrid"]),
+    default="hybrid",
+    show_default=True,
+    help="How to rank results.",
+)
+@click.option(
+    "--ocr-weight",
+    type=float,
+    default=0.55,
+    show_default=True,
+    help="In hybrid mode: weight for OCR score (0..1).",
+)
+@click.option(
     "--open",
     "open_rank",
     type=int,
@@ -243,7 +327,15 @@ def index(folder: Path, device: str):
     default=None,
     help="Reveal the Nth result in Finder (1-based) after searching.",
 )
-def search(query: str, k: int, device: str, open_rank: int | None, reveal_rank: int | None):
+def search(
+    query: str,
+    k: int,
+    device: str,
+    mode: str,
+    ocr_weight: float,
+    open_rank: int | None,
+    reveal_rank: int | None,
+):
     """Search indexed images by text."""
 
     if device == "auto":
@@ -258,6 +350,13 @@ def search(query: str, k: int, device: str, open_rank: int | None, reveal_rank: 
     if embs is None:
         raise click.ClickException("No embeddings found. Run: merlian index <folder>")
 
+    paths_list: List[str] = meta.get("paths", [])
+    if len(paths_list) != embs.shape[0]:
+        raise click.ClickException(
+            "Index metadata mismatch. Re-run: merlian reset && merlian index <folder>"
+        )
+
+    # Build CLIP score
     model_name = meta.get("model", {}).get("name", "ViT-B-32")
     pretrained = meta.get("model", {}).get("pretrained", "laion2b_s34b_b79k")
 
@@ -269,23 +368,53 @@ def search(query: str, k: int, device: str, open_rank: int | None, reveal_rank: 
     q = text_embedding(model, tokenizer, device, query)
 
     # Cosine similarity via dot product (vectors are normalized).
-    scores = embs @ q.reshape(-1, 1)
-    scores = scores.reshape(-1)
+    clip_scores = (embs @ q.reshape(-1, 1)).reshape(-1)
+
+    # Build OCR score (simple token coverage)
+    q_tokens = [t for t in re.split(r"[^a-zA-Z0-9]+", query.lower()) if len(t) >= 3]
+    ocr_scores = np.zeros_like(clip_scores)
+    if q_tokens:
+        conn = sqlite3.connect(paths.db)
+        rows = conn.execute("SELECT path, COALESCE(ocr_text, '') FROM assets").fetchall()
+        ocr_map = {p: (txt or "").lower() for p, txt in rows}
+        for i, p in enumerate(paths_list):
+            txt = ocr_map.get(p, "")
+            if not txt:
+                continue
+            hits = sum(1 for t in q_tokens if t in txt)
+            ocr_scores[i] = hits / max(1, len(q_tokens))
+
+    # Choose scoring mode
+    if mode == "clip":
+        scores = clip_scores
+    elif mode == "ocr":
+        scores = ocr_scores
+    else:
+        # hybrid
+        w = float(ocr_weight)
+        w = 0.0 if w < 0 else (1.0 if w > 1 else w)
+        scores = (1.0 - w) * clip_scores + w * ocr_scores
+
     topk = np.argsort(-scores)[:k]
 
-    table = Table(title=f"Merlian results for: {query!r}")
+    table = Table(title=f"Merlian results for: {query!r} ({mode})")
     table.add_column("rank", justify="right")
     table.add_column("score", justify="right")
+    table.add_column("clip", justify="right")
+    table.add_column("ocr", justify="right")
     table.add_column("path")
 
-    paths_list: List[str] = meta.get("paths", [])
     ranked_paths: List[str] = []
     for rank, idx_id in enumerate(topk, start=1):
-        if idx_id < 0 or idx_id >= len(paths_list):
-            continue
         p = paths_list[idx_id]
         ranked_paths.append(p)
-        table.add_row(str(rank), f"{float(scores[idx_id]):.3f}", p)
+        table.add_row(
+            str(rank),
+            f"{float(scores[idx_id]):.3f}",
+            f"{float(clip_scores[idx_id]):.3f}",
+            f"{float(ocr_scores[idx_id]):.2f}",
+            p,
+        )
 
     console.print(table)
 
