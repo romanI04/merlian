@@ -10,8 +10,9 @@
 - Verified Dispict frontend runs locally
 
 ## Next step
-- Add minimal Merlian rebrand + demo dataset attribution banner in UI
-- Decide whether we keep Dispict as `dispict/` or move to repo root once rebranding begins
+- Draft MVP spec for the real local-first product (folder indexing pipeline + stack decision)
+- Decide architecture approach (Tauri/Electron + local engine)
+- Start thin-slice CLI prototype (index/search) if time permits
 
 ## Blockers
 - Confirm dataset / image usage terms if we use Harvard demo data.
