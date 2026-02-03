@@ -78,6 +78,15 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
     if "ocr_text" not in cols:
         conn.execute("ALTER TABLE assets ADD COLUMN ocr_text TEXT")
 
+    # OCR full-text index (SQLite FTS5).
+    # We keep this separate and simple to avoid trigger complexity.
+    conn.execute(
+        """
+        CREATE VIRTUAL TABLE IF NOT EXISTS ocr_fts
+        USING fts5(path UNINDEXED, ocr_text);
+        """
+    )
+
     conn.commit()
 
 
@@ -273,6 +282,13 @@ def index(folder: Path, device: str, ocr: bool):
             (p_str, mtime, size, w, h, ocr_txt, now),
         )
 
+        # Update OCR full-text index.
+        conn.execute("DELETE FROM ocr_fts WHERE path=?", (p_str,))
+        if ocr_txt:
+            conn.execute(
+                "INSERT INTO ocr_fts(path, ocr_text) VALUES(?, ?)", (p_str, ocr_txt)
+            )
+
         meta["paths"].append(p_str)
         vecs.append(vec)
 
@@ -314,6 +330,12 @@ def index(folder: Path, device: str, ocr: bool):
     help="In hybrid mode: weight for OCR score (0..1).",
 )
 @click.option(
+    "--why/--no-why",
+    default=False,
+    show_default=True,
+    help="Show matched OCR tokens for each result (debug).",
+)
+@click.option(
     "--open",
     "open_rank",
     type=int,
@@ -333,6 +355,7 @@ def search(
     device: str,
     mode: str,
     ocr_weight: float,
+    why: bool,
     open_rank: int | None,
     reveal_rank: int | None,
 ):
@@ -370,19 +393,88 @@ def search(
     # Cosine similarity via dot product (vectors are normalized).
     clip_scores = (embs @ q.reshape(-1, 1)).reshape(-1)
 
-    # Build OCR score (simple token coverage)
-    q_tokens = [t for t in re.split(r"[^a-zA-Z0-9]+", query.lower()) if len(t) >= 3]
+    # Build OCR score using SQLite FTS5 (much better than naive substring matching).
+    # We score only files that match the OCR query, and normalize bm25 scores to 0..1.
+    q_tokens = [
+        t for t in re.split(r"[^a-zA-Z0-9]+", query.lower()) if len(t) >= 3 or t.isdigit()
+    ]
     ocr_scores = np.zeros_like(clip_scores)
+    ocr_hits: dict[str, list[str]] = {}
+
     if q_tokens:
         conn = sqlite3.connect(paths.db)
-        rows = conn.execute("SELECT path, COALESCE(ocr_text, '') FROM assets").fetchall()
-        ocr_map = {p: (txt or "").lower() for p, txt in rows}
-        for i, p in enumerate(paths_list):
-            txt = ocr_map.get(p, "")
-            if not txt:
-                continue
-            hits = sum(1 for t in q_tokens if t in txt)
-            ocr_scores[i] = hits / max(1, len(q_tokens))
+
+        # Prefer AND for precision; fall back to OR if nothing matches.
+        match_and = " AND ".join(q_tokens)
+        match_or = " OR ".join(q_tokens)
+
+        try:
+            rows = conn.execute(
+                """
+                SELECT path, bm25(ocr_fts) as score
+                FROM ocr_fts
+                WHERE ocr_fts MATCH ?
+                ORDER BY score
+                LIMIT 2000
+                """,
+                (match_and,),
+            ).fetchall()
+
+            if not rows and len(q_tokens) > 1:
+                rows = conn.execute(
+                    """
+                    SELECT path, bm25(ocr_fts) as score
+                    FROM ocr_fts
+                    WHERE ocr_fts MATCH ?
+                    ORDER BY score
+                    LIMIT 2000
+                    """,
+                    (match_or,),
+                ).fetchall()
+
+            # bm25: lower is better; convert to 0..1 where 1 is best.
+            if rows:
+                raw = np.array([float(r[1]) for r in rows], dtype="float32")
+                best = float(raw.min())
+                worst = float(raw.max())
+                denom = max(1e-6, worst - best)
+
+                score_map = {}
+                for (p, s) in rows:
+                    s = float(s)
+                    norm = 1.0 - ((s - best) / denom)
+                    score_map[str(p)] = float(norm)
+
+                for i, p in enumerate(paths_list):
+                    v = score_map.get(p)
+                    if v is not None:
+                        ocr_scores[i] = v
+
+                if why:
+                    # Fetch snippets for the top candidates we might display.
+                    # For debug only — keep it lightweight.
+                    top_paths = [p for (p, _) in rows[: min(len(rows), k * 5)]]
+                    ph = ",".join("?" for _ in top_paths)
+                    texts = conn.execute(
+                        f"SELECT path, COALESCE(ocr_text,'') FROM assets WHERE path IN ({ph})",
+                        tuple(top_paths),
+                    ).fetchall()
+                    for p, txt in texts:
+                        txt_l = (txt or "").lower()
+                        ocr_hits[str(p)] = [t for t in q_tokens if t in txt_l]
+
+        except sqlite3.OperationalError:
+            # FTS not available; fall back to naive matching.
+            rows = conn.execute("SELECT path, COALESCE(ocr_text, '') FROM assets").fetchall()
+            ocr_map = {p: (txt or "").lower() for p, txt in rows}
+            for i, p in enumerate(paths_list):
+                txt = ocr_map.get(p, "")
+                if not txt:
+                    continue
+                hits = sum(1 for t in q_tokens if t in txt)
+                ocr_scores[i] = hits / max(1, len(q_tokens))
+                if why and hits:
+                    ocr_hits[p] = [t for t in q_tokens if t in txt]
 
     # Choose scoring mode
     if mode == "clip":
@@ -402,19 +494,26 @@ def search(
     table.add_column("score", justify="right")
     table.add_column("clip", justify="right")
     table.add_column("ocr", justify="right")
+    if why:
+        table.add_column("why")
     table.add_column("path")
 
     ranked_paths: List[str] = []
     for rank, idx_id in enumerate(topk, start=1):
         p = paths_list[idx_id]
         ranked_paths.append(p)
-        table.add_row(
+
+        row = [
             str(rank),
             f"{float(scores[idx_id]):.3f}",
             f"{float(clip_scores[idx_id]):.3f}",
             f"{float(ocr_scores[idx_id]):.2f}",
-            p,
-        )
+        ]
+        if why:
+            row.append(", ".join(ocr_hits.get(p, []))
+            )
+        row.append(p)
+        table.add_row(*row)
 
     console.print(table)
 
