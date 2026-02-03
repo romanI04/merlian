@@ -26,7 +26,7 @@ uvicorn server:app --port 8008
 
 ### 2) Start the UI
 ```bash
-cd dispict
+cd ui
 npm install
 npm run dev -- --host 127.0.0.1 --port 5173
 ```
