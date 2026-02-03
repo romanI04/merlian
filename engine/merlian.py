@@ -26,6 +26,7 @@ from rich.console import Console
 from rich.table import Table
 from tqdm import tqdm
 import sys
+import subprocess
 
 console = Console()
 
@@ -221,14 +222,28 @@ def index(folder: Path, device: str):
 
 @cli.command()
 @click.argument("query", type=str)
-@click.option("--k", type=int, default=12)
+@click.option("--k", type=int, default=12, show_default=True)
 @click.option(
     "--device",
     type=click.Choice(["auto", "cpu", "mps"]),
     default="auto",
     show_default=True,
 )
-def search(query: str, k: int, device: str):
+@click.option(
+    "--open",
+    "open_rank",
+    type=int,
+    default=None,
+    help="Open the Nth result (1-based) after searching.",
+)
+@click.option(
+    "--reveal",
+    "reveal_rank",
+    type=int,
+    default=None,
+    help="Reveal the Nth result in Finder (1-based) after searching.",
+)
+def search(query: str, k: int, device: str, open_rank: int | None, reveal_rank: int | None):
     """Search indexed images by text."""
 
     if device == "auto":
@@ -264,12 +279,35 @@ def search(query: str, k: int, device: str):
     table.add_column("path")
 
     paths_list: List[str] = meta.get("paths", [])
+    ranked_paths: List[str] = []
     for rank, idx_id in enumerate(topk, start=1):
         if idx_id < 0 or idx_id >= len(paths_list):
             continue
-        table.add_row(str(rank), f"{float(scores[idx_id]):.3f}", paths_list[idx_id])
+        p = paths_list[idx_id]
+        ranked_paths.append(p)
+        table.add_row(str(rank), f"{float(scores[idx_id]):.3f}", p)
 
     console.print(table)
+
+    def resolve_rank(r: int | None) -> str | None:
+        if r is None:
+            return None
+        if r < 1 or r > len(ranked_paths):
+            raise click.ClickException(
+                f"Rank {r} is out of range (1..{len(ranked_paths)})."
+            )
+        return ranked_paths[r - 1]
+
+    target_open = resolve_rank(open_rank)
+    target_reveal = resolve_rank(reveal_rank)
+
+    if target_open and target_reveal:
+        raise click.ClickException("Use only one of --open or --reveal.")
+
+    if target_open:
+        subprocess.run(["open", target_open], check=False)
+    elif target_reveal:
+        subprocess.run(["open", "-R", target_reveal], check=False)
 
 
 @cli.command()

@@ -34,6 +34,12 @@ As a quick workaround, copy a few images into a folder under this repo (e.g. `~/
 ```bash
 source .venv/bin/activate
 python merlian.py search "red sneaker" --k 10  # uses MPS if available
+
+# open the top result
+python merlian.py search "red sneaker" --k 10 --open 1
+
+# reveal result #3 in Finder
+python merlian.py search "red sneaker" --k 10 --reveal 3
 ```
 
 ## Reset
