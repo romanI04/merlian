@@ -18,6 +18,7 @@
   let folderInput: string = "~/Desktop";
   let indexing = false;
   let statusLine = "Checking status…";
+  let currentJobId: string | null = null;
 
   async function refreshStatus() {
     try {
@@ -34,6 +35,20 @@
       if (data.root) folderInput = data.root;
     } catch {
       statusLine = "Local engine not running (start API server on :8008)";
+    }
+  }
+
+  async function cancelIndex() {
+    if (!currentJobId) return;
+    const base = LOCAL_API_URL.endsWith("/")
+      ? LOCAL_API_URL.slice(0, -1)
+      : LOCAL_API_URL;
+
+    try {
+      await fetch(base + `/jobs/${currentJobId}/cancel`, { method: "POST" });
+      statusLine = "Cancelling…";
+    } catch (e) {
+      console.error(e);
     }
   }
 
@@ -55,6 +70,7 @@
       const data = await resp.json();
       const jobId = data?.job_id as string;
       if (!jobId) throw new Error("No job_id returned");
+      currentJobId = jobId;
 
       while (true) {
         const j = await (await fetch(base + `/jobs/${jobId}`)).json();
@@ -77,6 +93,7 @@
       console.error(e);
     } finally {
       indexing = false;
+      currentJobId = null;
       await refreshStatus();
     }
   }
@@ -164,13 +181,24 @@
             bind:value={folderInput}
             placeholder="/Users/romanimanov/Desktop"
           />
-          <button
-            class="px-4 py-2 rounded-lg bg-neutral-900 text-white hover:bg-neutral-700 disabled:opacity-50"
-            on:click={runIndex}
-            disabled={indexing}
-          >
-            {indexing ? "Indexing…" : "Index"}
-          </button>
+          <div class="flex gap-2">
+            <button
+              class="px-4 py-2 rounded-lg bg-neutral-900 text-white hover:bg-neutral-700 disabled:opacity-50"
+              on:click={runIndex}
+              disabled={indexing}
+            >
+              {indexing ? "Indexing…" : "Index"}
+            </button>
+
+            {#if indexing}
+              <button
+                class="px-4 py-2 rounded-lg bg-white border border-neutral-200 hover:bg-neutral-100"
+                on:click={cancelIndex}
+              >
+                Cancel
+              </button>
+            {/if}
+          </div>
         </div>
 
         <div class="mt-2 flex flex-wrap gap-2 text-xs">
