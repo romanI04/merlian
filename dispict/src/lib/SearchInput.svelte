@@ -6,6 +6,14 @@
   export let value: string = "";
   export let searching: boolean = false;
 
+  const EXAMPLE_SEARCHES = [
+    "minimalist black logo",
+    "dashboard in dark mode",
+    "chart about inflation",
+    "red sneaker",
+    "handwritten notes on a whiteboard",
+  ];
+
   function handleKeydown(event: KeyboardEvent) {
     if (event.ctrlKey || event.metaKey) {
       // Disable formatting shortcuts.
@@ -44,9 +52,25 @@
     on:paste={handlePaste}
   />
 
+  <div class="px-3 pb-3 -mt-1">
+    <div class="flex flex-wrap gap-1.5">
+      {#each EXAMPLE_SEARCHES as example}
+        <button
+          class="text-xs px-2 py-1 rounded-full bg-neutral-100 hover:bg-neutral-200 text-neutral-700"
+          on:click={() => (value = example)}
+        >
+          {example}
+        </button>
+      {/each}
+    </div>
+    <p class="mt-2 text-[11px] text-neutral-500">
+      Tip: type to search. Click a result to view details.
+    </p>
+  </div>
+
   {#if searching}
     <div
-      class="absolute right-1.5 bottom-1.5 animate-spin pointer-events-none text-gray-400"
+      class="absolute right-1.5 bottom-1.5 animate-spin pointer-events-none text-neutral-400"
     >
       <svg
         width="24"
@@ -83,7 +107,7 @@
     </div>
   {:else}
     <button
-      class="absolute right-1 bottom-1 p-1.5 text-gray-400 hover:text-gray-700"
+      class="absolute right-1 bottom-1 p-1.5 text-neutral-400 hover:text-neutral-700"
       on:click={() => dispatch("refresh")}
     >
       <svg

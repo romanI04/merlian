@@ -150,7 +150,7 @@
       apiError = null;
     } catch (error: any) {
       if (!ctrl.signal.aborted) {
-        apiError = "There was an error searching.";
+        apiError = "Search is temporarily unavailable (demo backend). Please try again.";
       }
     } finally {
       searching--;
