@@ -30,7 +30,7 @@ import os
 import subprocess
 import sys
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 
@@ -123,14 +123,38 @@ def _normalize_path(p: str) -> Path:
     return Path(os.path.expanduser(p)).resolve()
 
 
+def _require_localhost(req: Request) -> None:
+    host = req.client.host if req.client else ""
+    if host not in ("127.0.0.1", "::1"):
+        raise HTTPException(status_code=403, detail="localhost only")
+
+
+def _is_indexed(path: str) -> bool:
+    # Only allow file operations on files that are already in the index.
+    paths = core.get_dbpaths()
+    if not paths.db.exists():
+        return False
+    conn = core.sqlite3.connect(paths.db)
+    row = conn.execute("SELECT 1 FROM assets WHERE path=? LIMIT 1", (path,)).fetchone()
+    return row is not None
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
 @app.get("/thumb")
-def thumb(path: str, max_px: int = 640, width: int | None = None) -> Response:
-    p = _normalize_path(path)
+def thumb(req: Request, path: str, max_px: int = 640, width: int | None = None) -> Response:
+    _require_localhost(req)
+
+    # Enforce indexed-only access.
+    raw = path.split("?", 1)[0]
+    normalized = str(_normalize_path(raw))
+    if not _is_indexed(normalized):
+        raise HTTPException(status_code=403, detail="not indexed")
+
+    p = Path(normalized)
     if not p.exists() or not p.is_file():
         raise HTTPException(status_code=404, detail="file not found")
 
@@ -146,8 +170,14 @@ def thumb(path: str, max_px: int = 640, width: int | None = None) -> Response:
 
 
 @app.post("/open")
-def open_path(req: OpenRequest) -> dict[str, Any]:
-    p = _normalize_path(req.path)
+def open_path(http_req: Request, req: OpenRequest) -> dict[str, Any]:
+    _require_localhost(http_req)
+
+    p_norm = str(_normalize_path(req.path))
+    if not _is_indexed(p_norm):
+        raise HTTPException(status_code=403, detail="not indexed")
+
+    p = Path(p_norm)
     if not p.exists() or not p.is_file():
         raise HTTPException(status_code=404, detail="file not found")
 
