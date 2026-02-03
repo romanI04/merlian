@@ -1,0 +1,5 @@
+# local artifacts
+.DS_Store
+
+# optional convenience alias (symlink)
+ui
