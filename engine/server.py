@@ -33,6 +33,11 @@ import sys
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
+
+# Cache CLIP model/tokenizer per device for reliability + speed.
+MODEL_CACHE: dict[str, tuple[str, str, Any, Any]] = {}
+MODEL_LOCK = threading.Lock()
+
 from pydantic import BaseModel, Field
 
 
@@ -55,6 +60,25 @@ sys.path.insert(0, str(Path(__file__).parent))
 import merlian as core
 
 app = FastAPI(title="Merlian Local API", version="0.1")
+
+
+def _get_model(device: str, model_name: str, pretrained: str):
+    key = f"{device}:{model_name}:{pretrained}"
+    with MODEL_LOCK:
+        if key in MODEL_CACHE:
+            return MODEL_CACHE[key]
+
+    model, _, _ = core.open_clip.create_model_and_transforms(
+        model_name, pretrained=pretrained
+    )
+    tok = core.open_clip.get_tokenizer(model_name)
+    model.to(device)
+    model.eval()
+
+    with MODEL_LOCK:
+        MODEL_CACHE[key] = (model_name, pretrained, model, tok)
+
+    return MODEL_CACHE[key]
 
 # Dev-friendly: allow Vite dev server to call us.
 app.add_middleware(
@@ -133,6 +157,24 @@ def open_path(req: OpenRequest) -> dict[str, Any]:
         subprocess.run(["open", str(p)], check=False)
 
     return {"ok": True}
+
+
+@app.post("/warm")
+def warm(device: Literal["auto", "cpu", "mps"] = "auto") -> dict[str, Any]:
+    """Warm the CLIP model so first search is instant."""
+    if device == "auto":
+        device = "mps" if core.torch.backends.mps.is_available() else "cpu"
+
+    paths = core.get_dbpaths()
+    if not paths.meta.exists():
+        return {"ok": False, "error": "no index"}
+
+    meta = core.json.loads(paths.meta.read_text())
+    model_name = meta.get("model", {}).get("name", "ViT-B-32")
+    pretrained = meta.get("model", {}).get("pretrained", "laion2b_s34b_b79k")
+
+    _get_model(device, model_name, pretrained)
+    return {"ok": True, "device": device, "model": {"name": model_name, "pretrained": pretrained}}
 
 
 @app.get("/status")
@@ -316,12 +358,7 @@ def search(req: SearchRequest) -> dict[str, Any]:
     model_name = meta.get("model", {}).get("name", "ViT-B-32")
     pretrained = meta.get("model", {}).get("pretrained", "laion2b_s34b_b79k")
 
-    model, _, _ = core.open_clip.create_model_and_transforms(
-        model_name, pretrained=pretrained
-    )
-    tokenizer = core.open_clip.get_tokenizer(model_name)
-    model.to(device)
-    model.eval()
+    _, _, model, tokenizer = _get_model(device, model_name, pretrained)
 
     q = core.text_embedding(model, tokenizer, device, req.query)
     clip_scores = (embs @ q.reshape(-1, 1)).reshape(-1)
