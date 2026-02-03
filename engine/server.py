@@ -19,13 +19,30 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Literal
 
-from fastapi import FastAPI
+from PIL import Image
+import io
+import os
+import subprocess
+
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 
 # Reuse engine functions directly.
 import merlian as core
 
 app = FastAPI(title="Merlian Local API", version="0.1")
+
+# Dev-friendly: allow Vite dev server to call us.
+app.add_middleware(
+    CORSMiddleware,
+    # Vite dev server may hop ports (5173, 5174, ...). Allow localhost on any port.
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class IndexRequest(BaseModel):
@@ -42,9 +59,49 @@ class SearchRequest(BaseModel):
     ocr_weight: float = Field(default=0.55, ge=0.0, le=1.0)
 
 
+class OpenRequest(BaseModel):
+    path: str
+    reveal: bool = False
+
+
+def _normalize_path(p: str) -> Path:
+    # Expand and normalize. No sandboxing yet (MVP), but we at least canonicalize.
+    return Path(os.path.expanduser(p)).resolve()
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/thumb")
+def thumb(path: str, max_px: int = 640) -> Response:
+    p = _normalize_path(path)
+    if not p.exists() or not p.is_file():
+        raise HTTPException(status_code=404, detail="file not found")
+
+    try:
+        img = Image.open(p).convert("RGB")
+        img.thumbnail((max_px, max_px))
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=85)
+        return Response(content=buf.getvalue(), media_type="image/jpeg")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"cannot render: {e}")
+
+
+@app.post("/open")
+def open_path(req: OpenRequest) -> dict[str, Any]:
+    p = _normalize_path(req.path)
+    if not p.exists() or not p.is_file():
+        raise HTTPException(status_code=404, detail="file not found")
+
+    if req.reveal:
+        subprocess.run(["open", "-R", str(p)], check=False)
+    else:
+        subprocess.run(["open", str(p)], check=False)
+
+    return {"ok": True}
 
 
 @app.get("/status")
@@ -222,12 +279,23 @@ def search(req: SearchRequest) -> dict[str, Any]:
 
     results = []
     for idx_id in topk:
+        p = paths_list[int(idx_id)]
+        w = h = None
+        try:
+            with Image.open(p) as im:
+                w, h = im.size
+        except Exception:
+            pass
+
         results.append(
             {
-                "path": paths_list[int(idx_id)],
+                "path": p,
                 "score": float(scores[int(idx_id)]),
                 "clip": float(clip_scores[int(idx_id)]),
                 "ocr": float(ocr_scores[int(idx_id)]),
+                "width": w,
+                "height": h,
+                "thumb_url": f"/thumb?path={p}",
             }
         )
 
