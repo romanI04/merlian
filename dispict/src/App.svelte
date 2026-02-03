@@ -13,12 +13,35 @@
 
 <Welcome open={welcome} on:close={() => (welcome = false)} />
 
+<!-- Demo dataset attribution (keep this visible in demo mode) -->
+<div
+  class="fixed z-50 top-0 left-0 right-0 px-4 py-2 text-xs sm:text-sm bg-white/80 backdrop-blur border-b border-gray-200"
+>
+  <div class="max-w-3xl mx-auto text-gray-700">
+    <span class="font-medium">Merlian demo</span> — powered by
+    <a
+      class="underline underline-offset-2"
+      target="_blank"
+      rel="noopener noreferrer"
+      href="https://github.com/ekzhang/dispict"
+      >Dispict</a
+    > (MIT). Demo artworks/data from
+    <a
+      class="underline underline-offset-2"
+      target="_blank"
+      rel="noopener noreferrer"
+      href="https://harvardartmuseums.org"
+      >Harvard Art Museums</a
+    >.
+  </div>
+</div>
+
 <ArtSearch />
 
-<div class="absolute top-4 left-4 sm:top-8 sm:left-8">
+<div class="absolute top-12 left-4 sm:top-16 sm:left-8">
   <button
     class="logo-btn text-3xl fontvar-heading"
-    on:click={() => (welcome = true)}>dispict</button
+    on:click={() => (welcome = true)}>merlian</button
   >
 </div>
 

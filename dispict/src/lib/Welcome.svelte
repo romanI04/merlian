@@ -83,26 +83,29 @@
           class="text-center text-4xl sm:text-5xl fontvar-heading mb-2 sm:mb-4"
           in:fade={{ delay: 300 }}
         >
-          dispict
+          merlian <span class="text-base font-sans font-normal text-gray-500">(demo)</span>
         </h2>
         <p class="sm:text-xl" in:fade={{ delay: 600 }}>
           <a
             target="_blank"
             rel="noopener noreferrer"
-            href="https://github.com/ekzhang/dispict#readme">details + code</a
+            href="https://github.com/romanI04/merlian">repo</a
           >
           <span class="mx-1.5">|</span>
           <a
             target="_blank"
             rel="noopener noreferrer"
-            href="https://harvardartmuseums.org">museum</a
+            href="https://github.com/ekzhang/dispict#readme">dispict</a
           >
           <span class="mx-1.5">|</span>
           <a
             target="_blank"
             rel="noopener noreferrer"
-            href="https://www.ekzhang.com">author</a
+            href="https://harvardartmuseums.org">dataset</a
           >
+        </p>
+        <p class="mt-3 max-w-xl text-center text-sm text-gray-600" in:fade={{ delay: 800 }}>
+          Local-first visual memory search: describe what you remember, retrieve the right image.
         </p>
       </div>
 
