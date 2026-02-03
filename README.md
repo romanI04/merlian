@@ -17,7 +17,7 @@ npm run dev
 # open http://127.0.0.1:5173
 ```
 
-![Merlian demo screenshot](./assets/merlian-demo.png)
+![Merlian demo screenshot](./assets/merlian-demo-v2.jpg)
 
 ### Credits
 - Demo artworks/data: Harvard Art Museums — https://harvardartmuseums.org
