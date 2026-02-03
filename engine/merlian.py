@@ -13,7 +13,7 @@ import json
 import os
 import sqlite3
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable, List, Optional, Tuple
 
@@ -211,7 +211,11 @@ def cli():
 
 
 @cli.command()
-@click.argument("folder", type=click.Path(exists=True, file_okay=False, path_type=Path))
+@click.argument(
+    "folder",
+    required=False,
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+)
 @click.option(
     "--device",
     type=click.Choice(["auto", "cpu", "mps"]),
@@ -224,11 +228,24 @@ def cli():
     show_default=True,
     help="Extract text from images using Apple Vision OCR (macOS).",
 )
-def index(folder: Path, device: str, ocr: bool):
-    """Index all images under FOLDER."""
+def index(folder: Path | None, device: str, ocr: bool):
+    """Index images under FOLDER (or the last indexed folder)."""
 
     paths = get_dbpaths()
     paths.root.mkdir(parents=True, exist_ok=True)
+
+    # Allow running `merlian index` with no folder by reusing the last one.
+    if folder is None:
+        if paths.meta.exists():
+            try:
+                meta_prev = json.loads(paths.meta.read_text())
+                prev_root = meta_prev.get("root")
+                if prev_root:
+                    folder = Path(prev_root)
+            except Exception:
+                pass
+        if folder is None:
+            raise click.ClickException("No folder provided and no previous index found.")
 
     conn = sqlite3.connect(paths.db)
     ensure_schema(conn)
@@ -306,7 +323,7 @@ def index(folder: Path, device: str, ocr: bool):
             continue
 
         w, h = get_image_size(p)
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
 
         ocr_txt = ocr_text_apple_vision(p) if ocr else ""
 

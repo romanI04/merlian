@@ -24,6 +24,9 @@ python merlian.py index ~/Desktop
 
 # subsequent runs are incremental (fast): only new/changed files are processed
 python merlian.py index ~/Desktop
+
+# or re-index the last folder (no argument)
+python merlian.py index
 ```
 
 ### macOS permissions note
