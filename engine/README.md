@@ -21,6 +21,14 @@ source .venv/bin/activate
 python merlian.py index ~/Desktop --device cpu
 ```
 
+### macOS permissions note
+If you see `Directory '.../Desktop' is not readable`, macOS is blocking terminal access.
+Grant your terminal (or the app running this command) access in:
+- System Settings → Privacy & Security → **Files and Folders** (Desktop), or
+- System Settings → Privacy & Security → **Full Disk Access**
+
+As a quick workaround, copy a few images into a folder under this repo (e.g. `~/clawd/projects/merlian/test-images/`) and index that.
+
 ## Search
 
 ```bash
