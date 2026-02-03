@@ -420,6 +420,22 @@ def search(req: SearchRequest) -> dict[str, Any]:
 
     topk = core.np.argsort(-scores)[: req.k]
 
+    # Pull OCR preview text for just the top results (helps UX without exposing full text everywhere).
+    conn = core.sqlite3.connect(paths.db)
+    top_paths = [paths_list[int(i)] for i in topk]
+    ph = ",".join(["?"] * len(top_paths)) if top_paths else ""
+    ocr_preview: dict[str, str] = {}
+    if top_paths:
+        rows = conn.execute(
+            f"SELECT path, COALESCE(ocr_text,'') FROM assets WHERE path IN ({ph})",
+            tuple(top_paths),
+        ).fetchall()
+        for p, txt in rows:
+            t = (txt or "").replace("\n", " ").strip()
+            if len(t) > 180:
+                t = t[:180] + "…"
+            ocr_preview[str(p)] = t
+
     results = []
     for idx_id in topk:
         p = paths_list[int(idx_id)]
@@ -436,6 +452,7 @@ def search(req: SearchRequest) -> dict[str, Any]:
                 "score": float(scores[int(idx_id)]),
                 "clip": float(clip_scores[int(idx_id)]),
                 "ocr": float(ocr_scores[int(idx_id)]),
+                "ocr_preview": ocr_preview.get(p, ""),
                 "width": w,
                 "height": h,
                 "thumb_url": f"/thumb?path={p}",

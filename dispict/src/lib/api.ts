@@ -117,7 +117,7 @@ export async function loadSuggestions(
         dimwidth: w / 200,
 
         title: filename,
-        description: null,
+        description: (r.ocr_preview as string) || null,
         labeltext: null,
         people: [],
         dated: "",

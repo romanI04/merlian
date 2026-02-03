@@ -110,7 +110,11 @@
           Built from the open-source Dispict codebase (MIT) — see credits in the repo.
         </p>
         <p class="mt-3 max-w-xl text-center text-sm text-gray-600" in:fade={{ delay: 800 }}>
-          Describe what you remember. Merlian finds the closest matches.
+          {#if mode === "demo"}
+            Explore the demo gallery instantly — no setup required.
+          {:else}
+            Index a folder on your machine, then search it with plain language.
+          {/if}
         </p>
       </div>
 

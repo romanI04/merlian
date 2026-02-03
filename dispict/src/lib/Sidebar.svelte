@@ -121,6 +121,11 @@
       <dd>{artwork.dated}</dd>
     {/if}
 
+    {#if isLocal && artwork.description}
+      <dt>Matched text</dt>
+      <dd class="whitespace-pre-wrap text-neutral-700">{artwork.description}</dd>
+    {/if}
+
     <dt>Medium</dt>
     <dd>
       {#if artwork.technique && artwork.medium}
