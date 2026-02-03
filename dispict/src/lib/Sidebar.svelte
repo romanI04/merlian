@@ -3,9 +3,15 @@
 
   import type { Artwork } from "./api";
 
+  const API_URL =
+    // @ts-ignore
+    (import.meta as any).env?.VITE_APP_API_URL ?? "http://127.0.0.1:8008";
+
   const dispatch = createEventDispatcher<{ close: void }>();
 
   export let artwork: Artwork;
+
+  $: isLocal = artwork?.url?.startsWith("/");
 </script>
 
 <div class="text-neutral-900 p-6">
@@ -38,33 +44,62 @@
     <h2 class="text-2xl fontvar-heading mb-1">{artwork.title}</h2>
     <p class="text-neutral-500 text-sm">{artwork.objectnumber}</p>
 
-    <a
-      href={artwork.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      class="inline-block px-3 py-1.5 bg-neutral-900 text-white hover:bg-neutral-700 rounded-md mt-4"
-    >
-      <svg
-        width="18"
-        height="18"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        class="inline -mt-1 mr-1 feather feather-external-link"
-        ><path
-          d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
-        /><polyline points="15 3 21 3 21 9" /><line
-          x1="10"
-          y1="14"
-          x2="21"
-          y2="3"
-        /></svg
+    {#if isLocal}
+      <div class="flex gap-2 mt-4">
+        <button
+          class="inline-block px-3 py-1.5 bg-neutral-900 text-white hover:bg-neutral-700 rounded-md"
+          on:click={async () => {
+            await fetch((API_URL.endsWith("/") ? API_URL.slice(0, -1) : API_URL) + "/open", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ path: artwork.url, reveal: false }),
+            });
+          }}
+        >
+          Open
+        </button>
+        <button
+          class="inline-block px-3 py-1.5 bg-white border border-neutral-200 hover:bg-neutral-100 rounded-md"
+          on:click={async () => {
+            await fetch((API_URL.endsWith("/") ? API_URL.slice(0, -1) : API_URL) + "/open", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ path: artwork.url, reveal: true }),
+            });
+          }}
+        >
+          Reveal
+        </button>
+      </div>
+    {:else}
+      <a
+        href={artwork.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="inline-block px-3 py-1.5 bg-neutral-900 text-white hover:bg-neutral-700 rounded-md mt-4"
       >
-      View Source
-    </a>
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="inline -mt-1 mr-1 feather feather-external-link"
+          ><path
+            d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+          /><polyline points="15 3 21 3 21 9" /><line
+            x1="10"
+            y1="14"
+            x2="21"
+            y2="3"
+          /></svg
+        >
+        View Source
+      </a>
+    {/if}
   </div>
 
   <dl>
