@@ -163,7 +163,7 @@
   $: positions = layoutArtwork(results.map((r) => r.artwork));
 </script>
 
-<main class="absolute inset-0 overflow-hidden bg-gray-50">
+<main class="absolute inset-0 overflow-hidden bg-neutral-50">
   <div
     class="w-full h-full flex justify-center items-center touch-none"
     bind:this={frame}
@@ -208,7 +208,7 @@
 
 {#if selected}
   <aside
-    class="absolute z-20 inset-y-0 right-0 bg-stone-900 shadow-2xl overflow-y-auto"
+    class="absolute z-20 inset-y-0 right-0 bg-white/90 backdrop-blur border-l border-neutral-200 shadow-xl overflow-y-auto"
     style:width="calc(min(100vw, {SIDEBAR_WIDTH}px))"
     transition:fly={{ x: SIDEBAR_WIDTH, y: 0, duration: 300, easing: cubicOut }}
   >

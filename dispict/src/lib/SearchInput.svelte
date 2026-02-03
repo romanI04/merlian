@@ -28,8 +28,8 @@
 </script>
 
 <div
-  class="relative w-80 max-h-[200px] rounded z-10 bg-white border border-gray-100
-  shadow hover:shadow-md transition-shadow overflow-y-auto"
+  class="relative w-[420px] max-w-[90vw] max-h-[200px] rounded-xl z-10 bg-white/90 backdrop-blur border border-neutral-200
+  shadow-sm hover:shadow transition-shadow overflow-y-auto"
   on:mousedown={(event) => event.stopPropagation()}
   on:touchstart={(event) => event.stopPropagation()}
   on:dblclick={(event) => event.stopPropagation()}

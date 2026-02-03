@@ -8,11 +8,11 @@
   export let artwork: Artwork;
 </script>
 
-<div class="text-stone-200 p-6">
+<div class="text-neutral-900 p-6">
   <div class="flex justify-end mb-4">
     <button
       on:click={() => dispatch("close")}
-      class="p-1 rounded-md hover:bg-stone-800"
+      class="p-1 rounded-md hover:bg-neutral-200"
     >
       <svg
         width="20"
@@ -36,13 +36,13 @@
 
   <div class="mb-8">
     <h2 class="text-2xl fontvar-heading mb-1">{artwork.title}</h2>
-    <p class="text-stone-500">{artwork.objectnumber}</p>
+    <p class="text-neutral-500 text-sm">{artwork.objectnumber}</p>
 
     <a
       href={artwork.url}
       target="_blank"
       rel="noopener noreferrer"
-      class="inline-block px-2.5 py-1 bg-stone-800 hover:bg-stone-700 rounded-md mt-4"
+      class="inline-block px-3 py-1.5 bg-neutral-900 text-white hover:bg-neutral-700 rounded-md mt-4"
     >
       <svg
         width="18"
@@ -72,33 +72,12 @@
       Creator{#if artwork.people.length > 1}s{/if}
     </dt>
     <dd>
-      {#each artwork.people as name}<p>{name}</p>{:else}None{/each}
+      {#each artwork.people as name}<p>{name}</p>{:else}Unknown{/each}
     </dd>
 
-    <dt>Date</dt>
-    <dd>{artwork.dated}</dd>
-
-    {#if artwork.description?.trim()}
-      <dt>Description</dt>
-      <dd class="whitespace-pre-wrap">{artwork.description}</dd>
-    {/if}
-
-    {#if artwork.labeltext?.trim()}
-      <dt>Label Text</dt>
-      <dd class="whitespace-pre-wrap">{artwork.labeltext}</dd>
-    {/if}
-
-    <dt>Collection</dt>
-    <dd>{artwork.department}</dd>
-
-    {#if artwork.division}
-      <dt>Collection Area</dt>
-      <dd>{artwork.division}</dd>
-    {/if}
-
-    {#if artwork.culture}
-      <dt>Culture</dt>
-      <dd>{artwork.culture}</dd>
+    {#if artwork.dated}
+      <dt>Date</dt>
+      <dd>{artwork.dated}</dd>
     {/if}
 
     <dt>Medium</dt>
@@ -114,37 +93,25 @@
       {/if}
     </dd>
 
-    <dt>Classification</dt>
-    <dd>{artwork.classification}</dd>
-
-    <dt>Dimensions</dt>
-    <dd class="whitespace-pre-wrap">{artwork.dimensions}</dd>
-
-    {#if artwork.accessionyear}
-      <dt>Accession Year</dt>
-      <dd>{artwork.accessionyear}</dd>
+    {#if artwork.dimensions}
+      <dt>Dimensions</dt>
+      <dd class="whitespace-pre-wrap">{artwork.dimensions}</dd>
     {/if}
 
-    {#if artwork.copyright}
-      <dt>Copyright</dt>
-      <dd>{artwork.copyright}</dd>
-    {/if}
-
-    <dt>Credits</dt>
-    <dd>{artwork.creditline}</dd>
-
-    <dt class="mt-8">Demo note</dt>
-    <dd>This is demo metadata from the museum dataset.</dd>
+    <dt class="mt-8">Demo dataset</dt>
+    <dd class="text-neutral-600">
+      Metadata shown here is from the Harvard Art Museums demo dataset.
+    </dd>
   </dl>
 </div>
 
 <style lang="postcss">
   dt {
-    @apply text-xs font-semibold uppercase text-stone-400;
+    @apply text-xs font-semibold uppercase text-neutral-500;
   }
 
   dd {
-    @apply text-stone-300 text-sm;
+    @apply text-neutral-800 text-sm;
   }
 
   dd:not(:last-of-type) {
