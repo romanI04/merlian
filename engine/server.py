@@ -66,6 +66,8 @@ class OpenRequest(BaseModel):
 
 def _normalize_path(p: str) -> Path:
     # Expand and normalize. No sandboxing yet (MVP), but we at least canonicalize.
+    # Some frontend paths may accidentally append query params into this field (e.g. "...png?width=400").
+    p = p.split("?", 1)[0]
     return Path(os.path.expanduser(p)).resolve()
 
 
@@ -75,14 +77,15 @@ def health() -> dict[str, str]:
 
 
 @app.get("/thumb")
-def thumb(path: str, max_px: int = 640) -> Response:
+def thumb(path: str, max_px: int = 640, width: int | None = None) -> Response:
     p = _normalize_path(path)
     if not p.exists() or not p.is_file():
         raise HTTPException(status_code=404, detail="file not found")
 
     try:
         img = Image.open(p).convert("RGB")
-        img.thumbnail((max_px, max_px))
+        target = width if width is not None else max_px
+        img.thumbnail((target, target))
         buf = io.BytesIO()
         img.save(buf, format="JPEG", quality=85)
         return Response(content=buf.getvalue(), media_type="image/jpeg")
