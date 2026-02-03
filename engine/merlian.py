@@ -507,12 +507,40 @@ def search(
     else:
         # hybrid
         w = float(ocr_weight)
+
+        # Auto-boost OCR for “texty” queries (very common for screenshots):
+        # - contains digits (error codes, amounts, dates)
+        # - contains likely keywords
+        q_lower = query.lower()
+        has_digits = any(ch.isdigit() for ch in query)
+        texty_keywords = [
+            "error",
+            "code",
+            "http",
+            "forbidden",
+            "denied",
+            "invoice",
+            "receipt",
+            "total",
+            "$",
+            "usd",
+            "cad",
+        ]
+        looks_texty = has_digits or any(k in q_lower for k in texty_keywords)
+
+        if looks_texty:
+            w = max(w, 0.80)
+
         w = 0.0 if w < 0 else (1.0 if w > 1 else w)
         scores = (1.0 - w) * clip_scores + w * ocr_scores
 
     topk = np.argsort(-scores)[:k]
 
-    table = Table(title=f"Merlian results for: {query!r} ({mode})")
+    title_extra = ""
+    if mode == "hybrid":
+        title_extra = f" w={w:.2f}"
+
+    table = Table(title=f"Merlian results for: {query!r} ({mode}{title_extra})")
     table.add_column("rank", justify="right")
     table.add_column("score", justify="right")
     table.add_column("clip", justify="right")
