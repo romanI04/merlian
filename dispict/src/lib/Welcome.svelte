@@ -102,7 +102,7 @@
           Built from the open-source Dispict codebase (MIT) — see credits in the repo.
         </p>
         <p class="mt-3 max-w-xl text-center text-sm text-gray-600" in:fade={{ delay: 800 }}>
-          Local-first visual memory search: describe what you remember, retrieve the right image.
+          Describe what you remember. Merlian finds the closest matches.
         </p>
       </div>
 
@@ -110,12 +110,12 @@
         class="tagline text-5xl md:text-6xl lg:text-7xl xl:text-8xl text-center"
       >
         <span in:fade={{ delay: 1200 }}
-          >A growing <span class="text-[105%] font-serif italic"
-            >artistic exhibit</span
+          >Search your <span class="text-[105%] font-serif italic"
+            >visual memory</span
           ></span
         ><br />
         <span in:fade={{ delay: 1800 }}
-          >of your <span class="text-[105%] font-serif">own making</span></span
+          >with <span class="text-[105%] font-serif">plain language</span></span
         >
       </p>
 
@@ -126,7 +126,7 @@
           active:bg-rose-100 active:text-black active:ring-1 active:ring-black transition-colors"
           on:click={() => dispatch("close")}
         >
-          Explore the Gallery
+          Start searching
           <svg
             width="24"
             height="24"

@@ -108,11 +108,11 @@
 
 <style lang="postcss">
   .search {
-    @apply font-serif italic text-2xl text-center outline-none p-5;
+    @apply font-sans text-lg leading-6 text-left outline-none px-4 py-3;
   }
 
   .search:empty::before {
-    content: "what do you envision?";
+    content: "Search your images (e.g. \"minimalist black logo\", \"chart about inflation\")";
     @apply text-gray-400;
   }
 

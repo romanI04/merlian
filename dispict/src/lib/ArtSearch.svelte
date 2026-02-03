@@ -14,28 +14,20 @@
   const SIDEBAR_WIDTH = 420;
 
   const STARTER_INPUTS = [
-    "bright landscape",
-    "drawing with freedom",
-    "abstract painting",
-    "muslim religious imagery",
-    "everything I see is green",
-    "friendship",
-    "sunset over the ocean",
-    "sturm und drang",
-    "delicious fruit",
-    "pablo picasso",
-    "tokugawa japan",
-    "turbulent waves",
-    "tranquility",
-    "vivid dreams",
-    "baby jesus",
-    "the light of god",
-    "rainbow dreams",
-    "urban planning",
-    "oil paint flowers",
-    "tender arguments",
-    "john singer sargent",
-    "feeling unseen",
+    "minimalist black logo",
+    "dashboard in dark mode",
+    "chart about inflation",
+    "red sneaker",
+    "handwritten notes on a whiteboard",
+    "error message screenshot",
+    "clean landing page",
+    "receipt with total",
+    "calendar screenshot",
+    "spreadsheet with a graph",
+    "blue gradient background",
+    "map with route",
+    "slide deck title page",
+    "code editor screenshot",
   ];
 
   function randomInput(exclude?: string) {
@@ -158,7 +150,7 @@
       apiError = null;
     } catch (error: any) {
       if (!ctrl.signal.aborted) {
-        apiError = "There was an error finding the artwork.";
+        apiError = "There was an error searching.";
       }
     } finally {
       searching--;

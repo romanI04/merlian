@@ -69,7 +69,7 @@
 
   <dl>
     <dt>
-      Artist{#if artwork.people.length > 1}s{/if}
+      Creator{#if artwork.people.length > 1}s{/if}
     </dt>
     <dd>
       {#each artwork.people as name}<p>{name}</p>{:else}None{/each}
@@ -88,11 +88,11 @@
       <dd class="whitespace-pre-wrap">{artwork.labeltext}</dd>
     {/if}
 
-    <dt>Museum Department</dt>
+    <dt>Collection</dt>
     <dd>{artwork.department}</dd>
 
     {#if artwork.division}
-      <dt>Museum Division</dt>
+      <dt>Collection Area</dt>
       <dd>{artwork.division}</dd>
     {/if}
 
@@ -101,7 +101,7 @@
       <dd>{artwork.culture}</dd>
     {/if}
 
-    <dt>Technique / Medium</dt>
+    <dt>Medium</dt>
     <dd>
       {#if artwork.technique && artwork.medium}
         {artwork.technique} / {artwork.medium}
@@ -132,6 +132,9 @@
 
     <dt>Credits</dt>
     <dd>{artwork.creditline}</dd>
+
+    <dt class="mt-8">Demo note</dt>
+    <dd>This is demo metadata from the museum dataset.</dd>
   </dl>
 </div>
 
