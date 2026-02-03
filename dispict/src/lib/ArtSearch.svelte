@@ -137,20 +137,26 @@
   let searching = 0;
   let abortController = new AbortController();
 
+  async function retry() {
+    apiError = null;
+    await updateResults(query);
+  }
+
   async function updateResults(query: string) {
     selected = null;
     searching++;
     abortController.abort();
     const ctrl = new AbortController();
     abortController = ctrl;
-    results = [];
+    // Keep previous results while loading new ones.
     try {
-      if (!query) return;
+      if (!query?.trim()) return;
       results = await loadSuggestions(query, 64, ctrl.signal);
       apiError = null;
     } catch (error: any) {
       if (!ctrl.signal.aborted) {
-        apiError = "Search is temporarily unavailable (demo backend). Please try again.";
+        apiError =
+          "Search is temporarily unavailable (demo backend). Please try again.";
       }
     } finally {
       searching--;
@@ -175,11 +181,17 @@
         on:refresh={() => (query = randomInput(query))}
       />
       {#if apiError}
-        <p
-          class="absolute text-center w-80 mt-3 p-1 rounded bg-red-500/20 text-red-800"
+        <div
+          class="absolute text-center w-[420px] max-w-[90vw] mt-3 p-2 rounded-xl bg-red-500/10 text-red-900 border border-red-500/20"
         >
-          {apiError}
-        </p>
+          <p class="text-sm">{apiError}</p>
+          <button
+            class="mt-2 text-xs px-2 py-1 rounded-md bg-white/80 hover:bg-white border border-red-500/20"
+            on:click={retry}
+          >
+            Try again
+          </button>
+        </div>
       {/if}
     </div>
 
