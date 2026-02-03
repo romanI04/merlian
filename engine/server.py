@@ -159,6 +159,38 @@ def open_path(req: OpenRequest) -> dict[str, Any]:
     return {"ok": True}
 
 
+@app.post("/pick-folder")
+def pick_folder() -> dict[str, Any]:
+    """Open a native folder picker (macOS) and return selected folder."""
+
+    try:
+        # Available via pyobjc-framework-Cocoa.
+        from AppKit import NSOpenPanel
+
+        panel = NSOpenPanel.openPanel()
+        panel.setCanChooseFiles_(False)
+        panel.setCanChooseDirectories_(True)
+        panel.setAllowsMultipleSelection_(False)
+        panel.setCanCreateDirectories_(False)
+        panel.setTitle_("Choose a folder to index")
+        panel.setPrompt_("Choose")
+
+        result = panel.runModal()
+        # NSModalResponseOK = 1
+        if int(result) != 1:
+            return {"ok": False, "cancelled": True}
+
+        url = panel.URL()
+        if url is None:
+            return {"ok": False}
+
+        path = str(url.path())
+        return {"ok": True, "path": path}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"picker failed: {e}")
+
+
 @app.post("/warm")
 def warm(device: Literal["auto", "cpu", "mps"] = "auto") -> dict[str, Any]:
     """Warm the CLIP model so first search is instant."""

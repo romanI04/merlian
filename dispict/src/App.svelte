@@ -38,6 +38,22 @@
     }
   }
 
+  async function pickFolder() {
+    const base = LOCAL_API_URL.endsWith("/")
+      ? LOCAL_API_URL.slice(0, -1)
+      : LOCAL_API_URL;
+
+    try {
+      const resp = await fetch(base + "/pick-folder", { method: "POST" });
+      const data = await resp.json();
+      if (data?.ok && data?.path) {
+        folderInput = data.path;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
   async function cancelIndex() {
     if (!currentJobId) return;
     const base = LOCAL_API_URL.endsWith("/")
@@ -154,7 +170,7 @@
           target="_blank"
           rel="noopener noreferrer"
           href="https://github.com/romanI04/merlian/blob/main/engine/README.md"
-          >How to run</a
+          >Setup</a
         >
       </div>
     </div>
@@ -205,6 +221,7 @@
           <button class="px-2 py-1 rounded-md bg-neutral-100 hover:bg-neutral-200" on:click={() => (folderInput = "~/Desktop")}>Desktop</button>
           <button class="px-2 py-1 rounded-md bg-neutral-100 hover:bg-neutral-200" on:click={() => (folderInput = "~/Downloads")}>Downloads</button>
           <button class="px-2 py-1 rounded-md bg-neutral-100 hover:bg-neutral-200" on:click={() => (folderInput = "~/Pictures")}>Pictures</button>
+          <button class="px-2 py-1 rounded-md bg-neutral-100 hover:bg-neutral-200" on:click={pickFolder}>Choose…</button>
         </div>
 
         <p class="mt-2 text-[11px] text-neutral-500">

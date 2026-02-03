@@ -10,6 +10,8 @@ torch>=2.2
 fastapi>=0.110
 uvicorn[standard]>=0.27
 
+# macOS folder picker uses AppKit via pyobjc-framework-Cocoa
+
 # macOS OCR (Apple Vision)
 pyobjc-core>=10.0; platform_system == "Darwin"
 pyobjc-framework-Vision>=10.0; platform_system == "Darwin"

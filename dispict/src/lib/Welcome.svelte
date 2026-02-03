@@ -97,17 +97,6 @@
             rel="noopener noreferrer"
             href="https://github.com/romanI04/merlian">repo</a
           >
-          {#if mode === "demo"}
-            <span class="mx-1.5">|</span>
-            <a
-              target="_blank"
-              rel="noopener noreferrer"
-              href="https://harvardartmuseums.org">dataset</a
-            >
-          {/if}
-        </p>
-        <p class="mt-2 text-center text-xs text-gray-500" in:fade={{ delay: 750 }}>
-          Built from the open-source Dispict codebase (MIT) — see credits in the repo.
         </p>
         <p class="mt-3 max-w-xl text-center text-sm text-gray-600" in:fade={{ delay: 800 }}>
           {#if mode === "demo"}
