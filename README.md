@@ -1,10 +1,27 @@
-# Merlian (working name)
+# Merlian
 
-A **local‑first “visual memory” search tool**: index your screenshots + images, then retrieve them by describing what you remember in plain language.
+A **local-first visual memory search** tool: describe what you remember, retrieve the right image.
 
-This project is a **2‑week sprint** to prove product value and de‑risk the core blockers.
+This repo contains a **shareable demo** built by reframing the open-source Dispict project into a utilitarian “Spotlight for images” experience.
 
 > Guiding principle: **prove retention + usefulness before building a big SaaS.**
+
+---
+
+## Demo (local)
+
+```bash
+cd dispict
+npm install
+npm run dev
+# open http://127.0.0.1:5173
+```
+
+![Merlian demo screenshot](./assets/merlian-demo.png)
+
+### Credits
+- Demo artworks/data: Harvard Art Museums — https://harvardartmuseums.org
+- Open-source codebase used for the demo: see [CREDITS.md](./CREDITS.md)
 
 ---
 

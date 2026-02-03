@@ -15,17 +15,27 @@
 
 <!-- Demo dataset attribution (keep this visible in demo mode) -->
 <div
-  class="fixed z-50 top-0 left-0 right-0 px-4 py-2 text-xs sm:text-sm bg-white/80 backdrop-blur border-b border-gray-200"
+  class="fixed z-50 top-0 left-0 right-0 px-4 py-2 text-xs sm:text-sm bg-white/80 backdrop-blur border-b border-neutral-200"
 >
-  <div class="max-w-3xl mx-auto text-gray-700">
-    <span class="font-medium">Merlian demo</span> — demo artworks/data from
+  <div class="max-w-3xl mx-auto text-neutral-700 flex items-center justify-between gap-4">
+    <div class="truncate">
+      <span class="font-medium">Merlian demo</span> — demo artworks/data from
+      <a
+        class="underline underline-offset-2"
+        target="_blank"
+        rel="noopener noreferrer"
+        href="https://harvardartmuseums.org"
+        >Harvard Art Museums</a
+      >.
+    </div>
+
     <a
-      class="underline underline-offset-2"
+      class="shrink-0 text-neutral-500 hover:text-neutral-900 underline underline-offset-2"
       target="_blank"
       rel="noopener noreferrer"
-      href="https://harvardartmuseums.org"
-      >Harvard Art Museums</a
-    >.
+      href="https://github.com/romanI04/merlian/blob/main/CREDITS.md"
+      >Credits</a
+    >
   </div>
 </div>
 
