@@ -432,6 +432,29 @@ def search(
                     (match_or,),
                 ).fetchall()
 
+            # Some SQLite builds/tokenizers can be surprisingly bad at indexing pure-number tokens.
+            # If FTS yields nothing and the query contains digits (e.g. "403"), fall back to LIKE.
+            if not rows:
+                digit_tokens = [t for t in q_tokens if t.isdigit()]
+                if digit_tokens:
+                    clauses = " OR ".join(["ocr_text LIKE ?" for _ in digit_tokens])
+                    like_args = [f"%{t}%" for t in digit_tokens]
+                    like_rows = conn.execute(
+                        f"SELECT path FROM assets WHERE {clauses} LIMIT 2000",
+                        tuple(like_args),
+                    ).fetchall()
+                    if like_rows:
+                        # Give a decent OCR score to digit matches.
+                        for (p,) in like_rows:
+                            try:
+                                i = paths_list.index(str(p))
+                                ocr_scores[i] = max(ocr_scores[i], 0.95)
+                            except ValueError:
+                                pass
+                        if why:
+                            for (p,) in like_rows[: min(len(like_rows), k * 5)]:
+                                ocr_hits[str(p)] = digit_tokens
+
             # bm25: lower is better; convert to 0..1 where 1 is best.
             if rows:
                 raw = np.array([float(r[1]) for r in rows], dtype="float32")
