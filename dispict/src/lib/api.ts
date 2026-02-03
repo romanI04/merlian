@@ -1,4 +1,7 @@
 // See main.py for the source of this type.
+
+export type SearchMode = "demo" | "local";
+
 export type Artwork = {
   id: number;
   objectnumber: string;
@@ -39,16 +42,32 @@ export type SearchResult = {
   artwork: Artwork;
 };
 
-const API_URL =
-  import.meta.env.VITE_APP_API_URL ??
+const DEMO_API_URL =
+  import.meta.env.VITE_DEMO_API_URL ??
   "https://ekzhang--dispict-suggestions.modal.run/";
+
+const LOCAL_API_URL =
+  import.meta.env.VITE_LOCAL_API_URL ??
+  "http://127.0.0.1:8008";
+
+let SEARCH_MODE: SearchMode = (window.location.hash || "").includes("local")
+  ? "local"
+  : "demo";
+
+export function setSearchMode(mode: SearchMode) {
+  SEARCH_MODE = mode;
+}
 
 function baseUrl(url: string): string {
   return url.endsWith("/") ? url.slice(0, -1) : url;
 }
 
-function isLocalApi(url: string): boolean {
-  return baseUrl(url).includes("127.0.0.1:8008") || baseUrl(url).includes("localhost:8008");
+function localBase(): string {
+  return baseUrl(LOCAL_API_URL);
+}
+
+function demoBase(): string {
+  return baseUrl(DEMO_API_URL);
 }
 
 /** Queries the backend API for results matching a text phrase. */
@@ -58,8 +77,8 @@ export async function loadSuggestions(
   signal?: AbortSignal
 ): Promise<SearchResult[]> {
   // Local-first API (Merlian engine)
-  if (isLocalApi(API_URL)) {
-    const resp = await fetch(baseUrl(API_URL) + "/search", {
+  if (SEARCH_MODE === "local") {
+    const resp = await fetch(localBase() + "/search", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ query: text, k: n ?? 64, mode: "hybrid" }),
@@ -86,8 +105,12 @@ export async function loadSuggestions(
         objectnumber: filename,
         url: path, // local path; Sidebar handles open/reveal
         image_url:
-          baseUrl(API_URL) +
-          (r.thumb_url ? (r.thumb_url.startsWith("/") ? r.thumb_url : "/" + r.thumb_url) : ""),
+          localBase() +
+          (r.thumb_url
+            ? r.thumb_url.startsWith("/")
+              ? r.thumb_url
+              : "/" + r.thumb_url
+            : ""),
 
         dimensions: `${w}×${h}px`,
         dimheight: h / 200,
@@ -123,7 +146,7 @@ export async function loadSuggestions(
   }
 
   // Upstream Dispict demo API
-  let url = baseUrl(API_URL) + "?text=" + encodeURIComponent(text);
+  let url = demoBase() + "?text=" + encodeURIComponent(text);
   if (n) url += "&n=" + n;
   const resp = await fetch(url, { signal });
   return await resp.json();

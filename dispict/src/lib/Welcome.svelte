@@ -7,6 +7,7 @@
   const dispatch = createEventDispatcher<{ close: void }>();
 
   export let open: boolean;
+  export let mode: "demo" | "local" = "demo";
 
   let mouseX = spring<number>(-142);
   let mouseY = spring<number>(-142);
@@ -83,7 +84,12 @@
           class="text-center text-4xl sm:text-5xl fontvar-heading mb-2 sm:mb-4"
           in:fade={{ delay: 300 }}
         >
-          merlian <span class="text-base font-sans font-normal text-gray-500">(demo)</span>
+          merlian
+          {#if mode === "demo"}
+            <span class="text-base font-sans font-normal text-gray-500">(demo gallery)</span>
+          {:else}
+            <span class="text-base font-sans font-normal text-gray-500">(local)</span>
+          {/if}
         </h2>
         <p class="sm:text-xl" in:fade={{ delay: 600 }}>
           <a
@@ -119,29 +125,48 @@
         >
       </p>
 
-      <div class="py-10" in:fade={{ delay: 2600 }}>
-        <button
-          class="rounded-full px-5 py-2 bg-black text-white text-lg
-          hover:bg-white hover:text-black hover:ring-1 hover:ring-black
-          active:bg-rose-100 active:text-black active:ring-1 active:ring-black transition-colors"
-          on:click={() => dispatch("close")}
-        >
-          Start searching
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="inline pb-0.5 ml-1 -mr-1"
-            ><line x1="12" y1="5" x2="12" y2="19" /><polyline
-              points="19 12 12 19 5 12"
-            /></svg
+      <div class="py-10 flex flex-col items-center gap-3" in:fade={{ delay: 2600 }}>
+        {#if mode === "demo"}
+          <button
+            class="rounded-full px-5 py-2 bg-black text-white text-lg
+            hover:bg-white hover:text-black hover:ring-1 hover:ring-black
+            active:bg-rose-100 active:text-black active:ring-1 active:ring-black transition-colors"
+            on:click={() => {
+              window.location.hash = "#/demo";
+              dispatch("close");
+            }}
           >
-        </button>
+            Try the demo gallery
+          </button>
+          <button
+            class="rounded-full px-5 py-2 bg-white text-black text-lg ring-1 ring-black/20
+            hover:ring-black hover:bg-neutral-50 transition-colors"
+            on:click={() => {
+              window.location.hash = "#/local";
+              dispatch("close");
+            }}
+          >
+            Search my own library (local)
+          </button>
+          <p class="text-xs text-gray-500 max-w-xl text-center">
+            Demo uses the Harvard Art Museums dataset. Local mode searches files on your machine.
+          </p>
+        {:else}
+          <button
+            class="rounded-full px-5 py-2 bg-black text-white text-lg
+            hover:bg-white hover:text-black hover:ring-1 hover:ring-black
+            active:bg-rose-100 active:text-black active:ring-1 active:ring-black transition-colors"
+            on:click={() => dispatch("close")}
+          >
+            Start searching
+          </button>
+          <a
+            class="text-sm text-gray-600 hover:underline"
+            href="#/demo"
+            on:click={() => (window.location.hash = "#/demo")}
+            >Try the demo gallery</a
+          >
+        {/if}
       </div>
     {/if}
   </div>

@@ -7,7 +7,11 @@
   import ArtImage from "./ArtImage.svelte";
   import SearchInput from "./SearchInput.svelte";
   import Sidebar from "./Sidebar.svelte";
-  import { loadSuggestions, type Artwork, type SearchResult } from "./api";
+  import { loadSuggestions, setSearchMode, type Artwork, type SearchResult, type SearchMode } from "./api";
+
+  export let mode: SearchMode = "demo";
+  $: setSearchMode(mode);
+
   import { layoutArtwork, PIXELS_PER_CM } from "./geometry";
   import { TouchZoom } from "./touchZoom";
 

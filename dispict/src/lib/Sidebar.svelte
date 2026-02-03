@@ -3,15 +3,15 @@
 
   import type { Artwork } from "./api";
 
-  const API_URL =
+  const LOCAL_API_URL =
     // @ts-ignore
-    (import.meta as any).env?.VITE_APP_API_URL ?? "http://127.0.0.1:8008";
+    (import.meta as any).env?.VITE_LOCAL_API_URL ?? "http://127.0.0.1:8008";
 
   const dispatch = createEventDispatcher<{ close: void }>();
 
   export let artwork: Artwork;
 
-  $: isLocal = artwork?.url?.startsWith("/");
+  $: isLocal = Boolean(artwork?.url?.startsWith("/") && !artwork?.url?.startsWith("http"));
 </script>
 
 <div class="text-neutral-900 p-6">
@@ -49,7 +49,10 @@
         <button
           class="inline-block px-3 py-1.5 bg-neutral-900 text-white hover:bg-neutral-700 rounded-md"
           on:click={async () => {
-            await fetch((API_URL.endsWith("/") ? API_URL.slice(0, -1) : API_URL) + "/open", {
+            const base = (LOCAL_API_URL.endsWith("/")
+              ? LOCAL_API_URL.slice(0, -1)
+              : LOCAL_API_URL);
+            await fetch(base + "/open", {
               method: "POST",
               headers: { "content-type": "application/json" },
               body: JSON.stringify({ path: artwork.url, reveal: false }),
@@ -61,7 +64,10 @@
         <button
           class="inline-block px-3 py-1.5 bg-white border border-neutral-200 hover:bg-neutral-100 rounded-md"
           on:click={async () => {
-            await fetch((API_URL.endsWith("/") ? API_URL.slice(0, -1) : API_URL) + "/open", {
+            const base = (LOCAL_API_URL.endsWith("/")
+              ? LOCAL_API_URL.slice(0, -1)
+              : LOCAL_API_URL);
+            await fetch(base + "/open", {
               method: "POST",
               headers: { "content-type": "application/json" },
               body: JSON.stringify({ path: artwork.url, reveal: true }),
