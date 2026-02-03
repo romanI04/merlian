@@ -139,10 +139,15 @@
       <dd class="whitespace-pre-wrap">{artwork.dimensions}</dd>
     {/if}
 
-    <dt class="mt-8">Demo dataset</dt>
-    <dd class="text-neutral-600">
-      Metadata shown here is from the Harvard Art Museums demo dataset.
-    </dd>
+    {#if isLocal}
+      <dt class="mt-8">File</dt>
+      <dd class="text-neutral-600 break-all">{artwork.url}</dd>
+    {:else}
+      <dt class="mt-8">Demo dataset</dt>
+      <dd class="text-neutral-600">
+        Harvard Art Museums demo gallery.
+      </dd>
+    {/if}
   </dl>
 </div>
 

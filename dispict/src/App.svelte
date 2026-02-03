@@ -11,6 +11,52 @@
 
   let welcome = !navigationType || navigationType === "navigate"; // @hmr:keep
 
+  const LOCAL_API_URL =
+    // @ts-ignore
+    (import.meta as any).env?.VITE_LOCAL_API_URL ?? "http://127.0.0.1:8008";
+
+  let folderInput: string = "~/Desktop";
+  let indexing = false;
+  let statusLine = "Checking status…";
+
+  async function refreshStatus() {
+    try {
+      const base = LOCAL_API_URL.endsWith("/")
+        ? LOCAL_API_URL.slice(0, -1)
+        : LOCAL_API_URL;
+      const resp = await fetch(base + "/status");
+      const data = await resp.json();
+      if (!data?.indexed) {
+        statusLine = "Not indexed yet";
+        return;
+      }
+      statusLine = `Indexed ${data.assets} items • OCR ${data.with_ocr}/${data.assets}`;
+      if (data.root) folderInput = data.root;
+    } catch {
+      statusLine = "Local engine not running (start API server on :8008)";
+    }
+  }
+
+  async function runIndex() {
+    indexing = true;
+    statusLine = "Indexing…";
+    try {
+      const base = LOCAL_API_URL.endsWith("/")
+        ? LOCAL_API_URL.slice(0, -1)
+        : LOCAL_API_URL;
+      await fetch(base + "/index", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ folder: folderInput, ocr: true }),
+      });
+    } finally {
+      indexing = false;
+      await refreshStatus();
+    }
+  }
+
+  refreshStatus();
+
   function parseMode(): SearchMode {
     const h = window.location.hash || "";
     if (h.includes("local")) return "local";
@@ -55,7 +101,7 @@
   >
     <div class="max-w-3xl mx-auto text-neutral-700 flex items-center justify-between gap-4">
       <div class="truncate">
-        <span class="font-medium">Merlian (local)</span> — searching your indexed files.
+        <span class="font-medium">Merlian (local)</span> — search your own library.
       </div>
 
       <div class="flex items-center gap-4">
@@ -67,6 +113,49 @@
           href="https://github.com/romanI04/merlian/blob/main/engine/README.md"
           >How to run</a
         >
+      </div>
+    </div>
+  </div>
+{/if}
+
+{#if mode === "local"}
+  <div class="fixed z-40 top-10 sm:top-12 left-0 right-0 px-4">
+    <div class="max-w-3xl mx-auto">
+      <div class="rounded-xl bg-white/90 backdrop-blur border border-neutral-200 shadow-sm p-3 sm:p-4">
+        <div class="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+          <div class="text-sm text-neutral-700">
+            <span class="font-medium">Index a folder</span>
+            <span class="text-neutral-500">(local, stays on your machine)</span>
+          </div>
+          <div class="text-xs text-neutral-500">
+            {statusLine}
+          </div>
+        </div>
+
+        <div class="mt-3 flex flex-col sm:flex-row gap-2">
+          <input
+            class="flex-1 px-3 py-2 rounded-lg border border-neutral-200 bg-white focus:outline-none focus:ring-2 focus:ring-black/10"
+            bind:value={folderInput}
+            placeholder="/Users/romanimanov/Desktop"
+          />
+          <button
+            class="px-4 py-2 rounded-lg bg-neutral-900 text-white hover:bg-neutral-700 disabled:opacity-50"
+            on:click={runIndex}
+            disabled={indexing}
+          >
+            {indexing ? "Indexing…" : "Index"}
+          </button>
+        </div>
+
+        <div class="mt-2 flex flex-wrap gap-2 text-xs">
+          <button class="px-2 py-1 rounded-md bg-neutral-100 hover:bg-neutral-200" on:click={() => (folderInput = "~/Desktop")}>Desktop</button>
+          <button class="px-2 py-1 rounded-md bg-neutral-100 hover:bg-neutral-200" on:click={() => (folderInput = "~/Downloads")}>Downloads</button>
+          <button class="px-2 py-1 rounded-md bg-neutral-100 hover:bg-neutral-200" on:click={() => (folderInput = "~/Pictures")}>Pictures</button>
+        </div>
+
+        <p class="mt-2 text-[11px] text-neutral-500">
+          After indexing, try searches like: <span class="font-medium">"error 403"</span>, <span class="font-medium">"invoice total"</span>, <span class="font-medium">"meeting notes"</span>.
+        </p>
       </div>
     </div>
   </div>

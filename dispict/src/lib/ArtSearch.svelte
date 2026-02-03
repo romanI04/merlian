@@ -17,32 +17,46 @@
 
   const SIDEBAR_WIDTH = 420;
 
-  const STARTER_INPUTS = [
-    "minimalist black logo",
-    "dashboard in dark mode",
-    "chart about inflation",
-    "red sneaker",
-    "handwritten notes on a whiteboard",
-    "error message screenshot",
-    "clean landing page",
-    "receipt with total",
+  const LOCAL_STARTER_INPUTS = [
+    "error 403",
+    "invoice total",
+    "meeting notes",
+    "dark mode dashboard",
+    "code editor",
+    "google docs",
     "calendar screenshot",
-    "spreadsheet with a graph",
-    "blue gradient background",
-    "map with route",
-    "slide deck title page",
-    "code editor screenshot",
+    "map route",
   ];
 
+  const DEMO_STARTER_INPUTS = [
+    "bauhaus letterhead",
+    "minimalist black logo",
+    "abstract painting",
+    "portrait with red",
+    "architectural blueprint",
+    "typography poster",
+    "still life with fruit",
+    "ink drawing",
+  ];
+
+  function starterInputs(): string[] {
+    return mode === "local" ? LOCAL_STARTER_INPUTS : DEMO_STARTER_INPUTS;
+  }
+
   function randomInput(exclude?: string) {
+    const arr = starterInputs();
     while (true) {
-      const value =
-        STARTER_INPUTS[Math.floor(Math.random() * STARTER_INPUTS.length)];
+      const value = arr[Math.floor(Math.random() * arr.length)];
       if (value !== exclude) return value;
     }
   }
 
   let query = randomInput(); // @hmr:keep
+
+  // Force an instant "wow" query on load for demo gallery.
+  onMount(() => {
+    if (mode === "demo") query = "bauhaus letterhead";
+  });
 
   let frame: HTMLDivElement;
   let touchZoom: TouchZoom;
@@ -181,6 +195,7 @@
     <div style:transform={getTransform([0, 0], center, zoom)}>
       <SearchInput
         bind:value={query}
+        {mode}
         searching={searching > 0}
         on:refresh={() => (query = randomInput(query))}
       />

@@ -97,12 +97,14 @@
             rel="noopener noreferrer"
             href="https://github.com/romanI04/merlian">repo</a
           >
-          <span class="mx-1.5">|</span>
-          <a
-            target="_blank"
-            rel="noopener noreferrer"
-            href="https://harvardartmuseums.org">dataset</a
-          >
+          {#if mode === "demo"}
+            <span class="mx-1.5">|</span>
+            <a
+              target="_blank"
+              rel="noopener noreferrer"
+              href="https://harvardartmuseums.org">dataset</a
+            >
+          {/if}
         </p>
         <p class="mt-2 text-center text-xs text-gray-500" in:fade={{ delay: 750 }}>
           Built from the open-source Dispict codebase (MIT) — see credits in the repo.

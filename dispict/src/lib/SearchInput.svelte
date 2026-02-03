@@ -6,13 +6,25 @@
   export let value: string = "";
   export let searching: boolean = false;
 
-  const EXAMPLE_SEARCHES = [
+  export let mode: "demo" | "local" = "demo";
+
+  const EXAMPLE_SEARCHES_DEMO = [
+    "bauhaus letterhead",
     "minimalist black logo",
-    "dashboard in dark mode",
-    "chart about inflation",
-    "red sneaker",
-    "handwritten notes on a whiteboard",
+    "abstract painting",
+    "typography poster",
+    "portrait with red",
   ];
+
+  const EXAMPLE_SEARCHES_LOCAL = [
+    "error 403",
+    "invoice total",
+    "meeting notes",
+    "code editor",
+    "receipt total",
+  ];
+
+  $: EXAMPLE_SEARCHES = mode === "local" ? EXAMPLE_SEARCHES_LOCAL : EXAMPLE_SEARCHES_DEMO;
 
   function handleKeydown(event: KeyboardEvent) {
     if (event.ctrlKey || event.metaKey) {
