@@ -1,0 +1,11 @@
+__pycache__/
+.ipynb_checkpoints/
+
+.vscode/
+
+/data
+
+node_modules/
+dist/
+dist-ssr/
+*.local

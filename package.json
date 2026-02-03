@@ -1,0 +1,39 @@
+{
+  "name": "dispict",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "@fontsource/roboto-flex": "^4.5.2",
+    "@fontsource/source-serif-4": "^4.5.16",
+    "@tldraw/vec": "^1.8.0",
+    "@use-gesture/vanilla": "^10.2.23",
+    "lodash.debounce": "^4.0.8",
+    "rbush": "^3.0.1",
+    "svelte": "^3.55.0"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^2.0.2",
+    "@tsconfig/svelte": "^3.0.0",
+    "@types/lodash.debounce": "^4.0.7",
+    "@types/rbush": "^3.0.0",
+    "autoprefixer": "^10.4.13",
+    "postcss": "^8.4.19",
+    "postcss-load-config": "^4.0.1",
+    "prettier": "^2.8.1",
+    "prettier-plugin-svelte": "^2.9.0",
+    "svelte-check": "^2.10.2",
+    "svelte-preprocess": "^5.0.0",
+    "tailwindcss": "^3.2.4",
+    "tslib": "^2.4.1",
+    "typescript": "~4.9.4",
+    "vite": "^4.0.1"
+  }
+}
