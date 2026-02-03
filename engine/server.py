@@ -19,15 +19,37 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Literal
 
+import threading
+import time
+import uuid
+import re
+
 from PIL import Image
 import io
 import os
 import subprocess
+import sys
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
+
+
+class Job(BaseModel):
+    id: str
+    kind: Literal["index"]
+    status: Literal["queued", "running", "done", "error", "cancelled"] = "queued"
+    folder: str | None = None
+    processed: int = 0
+    total: int | None = None
+    message: str | None = None
+    error: str | None = None
+    started_at: float | None = None
+    finished_at: float | None = None
+
+# Ensure local imports work regardless of working directory.
+sys.path.insert(0, str(Path(__file__).parent))
 
 # Reuse engine functions directly.
 import merlian as core
@@ -49,6 +71,12 @@ class IndexRequest(BaseModel):
     folder: str | None = None
     device: Literal["auto", "cpu", "mps"] = "auto"
     ocr: bool = True
+
+
+# In-memory job store (MVP)
+JOBS: dict[str, Job] = {}
+JOB_LOCK = threading.Lock()
+JOB_PROCS: dict[str, subprocess.Popen] = {}
 
 
 class SearchRequest(BaseModel):
@@ -134,20 +162,132 @@ def status() -> dict[str, Any]:
     }
 
 
+def _job_update(job_id: str, **patch: Any) -> None:
+    with JOB_LOCK:
+        j = JOBS.get(job_id)
+        if not j:
+            return
+        data = j.model_dump()
+        data.update(patch)
+        JOBS[job_id] = Job(**data)
+
+
+def _run_index_job(job_id: str, folder: str | None, device: str, ocr: bool) -> None:
+    _job_update(job_id, status="running", started_at=time.time(), message="Starting…")
+
+    # Use the CLI as a subprocess so we can parse progress without major refactors.
+    # This also isolates any native-library issues.
+    cmd = [
+        sys.executable,
+        "-u",
+        str(Path(__file__).parent / "merlian.py"),
+        "index",
+    ]
+    if folder:
+        cmd.append(folder)
+    cmd.extend(["--device", device])
+    cmd.append("--ocr" if ocr else "--no-ocr")
+
+    try:
+        proc = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+        JOB_PROCS[job_id] = proc
+
+        # Parse progress lines like: “… processed 75/121”
+        prog_re = re.compile(r"processed\s+(\d+)/(\d+)")
+
+        for line in proc.stdout or []:
+            line = line.strip()
+            m = prog_re.search(line)
+            if m:
+                _job_update(
+                    job_id,
+                    processed=int(m.group(1)),
+                    total=int(m.group(2)),
+                    message=line,
+                )
+            elif line.startswith("Done.") or line.startswith("Done"):
+                _job_update(job_id, message=line)
+
+            # cancelled?
+            with JOB_LOCK:
+                if JOBS.get(job_id) and JOBS[job_id].status == "cancelled":
+                    try:
+                        proc.terminate()
+                    except Exception:
+                        pass
+                    break
+
+        rc = proc.wait()
+
+        # If cancelled, keep it cancelled.
+        with JOB_LOCK:
+            st = JOBS.get(job_id).status if JOBS.get(job_id) else None
+
+        if st == "cancelled":
+            _job_update(job_id, finished_at=time.time(), message="Cancelled")
+        elif rc == 0:
+            _job_update(job_id, status="done", finished_at=time.time(), processed=JOBS[job_id].processed, total=JOBS[job_id].total)
+        else:
+            _job_update(job_id, status="error", finished_at=time.time(), error=f"Indexing failed (code {rc})")
+
+    except Exception as e:
+        _job_update(job_id, status="error", finished_at=time.time(), error=str(e))
+    finally:
+        JOB_PROCS.pop(job_id, None)
+
+
+@app.get("/jobs/{job_id}")
+def get_job(job_id: str) -> Job:
+    with JOB_LOCK:
+        j = JOBS.get(job_id)
+        if not j:
+            raise HTTPException(status_code=404, detail="job not found")
+        return j
+
+
+@app.post("/jobs/{job_id}/cancel")
+def cancel_job(job_id: str) -> Job:
+    with JOB_LOCK:
+        j = JOBS.get(job_id)
+        if not j:
+            raise HTTPException(status_code=404, detail="job not found")
+        if j.status in ("done", "error"):
+            return j
+        JOBS[job_id] = Job(**{**j.model_dump(), "status": "cancelled"})
+
+    proc = JOB_PROCS.get(job_id)
+    if proc:
+        try:
+            proc.terminate()
+        except Exception:
+            pass
+
+    return get_job(job_id)
+
+
 @app.post("/index")
 def index(req: IndexRequest) -> dict[str, Any]:
-    # Call the same logic as CLI by invoking the function directly.
-    folder = Path(req.folder).expanduser() if req.folder else None
+    folder = str(Path(req.folder).expanduser()) if req.folder else None
 
-    # We call core.index() directly, but it is a click command.
-    # Instead we call the underlying function content by importing and reusing it.
-    # For MVP: replicate call using the same core functions.
+    job_id = uuid.uuid4().hex
+    job = Job(id=job_id, kind="index", status="queued", folder=folder, processed=0, total=None)
 
-    # Use the CLI function via its callback (works because we defined index() as a python function).
-    core.index.callback(folder, req.device, req.ocr)  # type: ignore[attr-defined]
+    with JOB_LOCK:
+        JOBS[job_id] = job
 
-    # Return fresh status.
-    return status()
+    t = threading.Thread(
+        target=_run_index_job,
+        args=(job_id, folder, req.device, req.ocr),
+        daemon=True,
+    )
+    t.start()
+
+    return {"job_id": job_id}
 
 
 @app.post("/search")

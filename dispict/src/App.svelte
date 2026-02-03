@@ -39,16 +39,42 @@
 
   async function runIndex() {
     indexing = true;
-    statusLine = "Indexing…";
+    statusLine = "Starting index…";
+
+    const base = LOCAL_API_URL.endsWith("/")
+      ? LOCAL_API_URL.slice(0, -1)
+      : LOCAL_API_URL;
+
     try {
-      const base = LOCAL_API_URL.endsWith("/")
-        ? LOCAL_API_URL.slice(0, -1)
-        : LOCAL_API_URL;
-      await fetch(base + "/index", {
+      const resp = await fetch(base + "/index", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ folder: folderInput, ocr: true }),
+        body: JSON.stringify({ folder: folderInput, ocr: true, device: "auto" }),
       });
+
+      const data = await resp.json();
+      const jobId = data?.job_id as string;
+      if (!jobId) throw new Error("No job_id returned");
+
+      while (true) {
+        const j = await (await fetch(base + `/jobs/${jobId}`)).json();
+        if (j.total) {
+          statusLine = `Indexing… ${j.processed}/${j.total}`;
+        } else {
+          statusLine = j.message ?? "Indexing…";
+        }
+
+        if (j.status === "done") break;
+        if (j.status === "error") throw new Error(j.error ?? "Index failed");
+        if (j.status === "cancelled") throw new Error("Index cancelled");
+
+        await new Promise((r) => setTimeout(r, 600));
+      }
+
+      statusLine = "Index complete";
+    } catch (e) {
+      statusLine = `Index failed`; // keep it simple in UI
+      console.error(e);
     } finally {
       indexing = false;
       await refreshStatus();
