@@ -143,7 +143,12 @@ def cli():
 
 @cli.command()
 @click.argument("folder", type=click.Path(exists=True, file_okay=False, path_type=Path))
-@click.option("--device", type=click.Choice(["cpu", "mps"]), default="cpu")
+@click.option(
+    "--device",
+    type=click.Choice(["auto", "cpu", "mps"]),
+    default="auto",
+    show_default=True,
+)
 def index(folder: Path, device: str):
     """Index all images under FOLDER."""
 
@@ -153,7 +158,10 @@ def index(folder: Path, device: str):
     conn = sqlite3.connect(paths.db)
     ensure_schema(conn)
 
-    console.print(f"[bold]Indexing[/bold] {folder}")
+    if device == "auto":
+        device = "mps" if torch.backends.mps.is_available() else "cpu"
+
+    console.print(f"[bold]Indexing[/bold] {folder}  ([dim]{device}[/dim])")
     model_name, pretrained, model, preprocess, tokenizer = load_model(device=device)
 
     # For the thin-slice MVP, we rebuild embeddings from scratch.
@@ -214,9 +222,17 @@ def index(folder: Path, device: str):
 @cli.command()
 @click.argument("query", type=str)
 @click.option("--k", type=int, default=12)
-@click.option("--device", type=click.Choice(["cpu", "mps"]), default="cpu")
+@click.option(
+    "--device",
+    type=click.Choice(["auto", "cpu", "mps"]),
+    default="auto",
+    show_default=True,
+)
 def search(query: str, k: int, device: str):
     """Search indexed images by text."""
+
+    if device == "auto":
+        device = "mps" if torch.backends.mps.is_available() else "cpu"
 
     paths = get_dbpaths()
     if not paths.embeddings.exists() or not paths.meta.exists():

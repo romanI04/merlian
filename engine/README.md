@@ -18,7 +18,7 @@ pip install -r requirements.txt
 
 ```bash
 source .venv/bin/activate
-python merlian.py index ~/Desktop --device cpu
+python merlian.py index ~/Desktop  # uses MPS if available
 ```
 
 ### macOS permissions note
@@ -33,7 +33,7 @@ As a quick workaround, copy a few images into a folder under this repo (e.g. `~/
 
 ```bash
 source .venv/bin/activate
-python merlian.py search "red sneaker" --k 10 --device cpu
+python merlian.py search "red sneaker" --k 10  # uses MPS if available
 ```
 
 ## Reset
