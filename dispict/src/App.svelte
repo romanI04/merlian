@@ -18,7 +18,9 @@
   let folderInput: string = "~/Desktop";
   let indexing = false;
   let statusLine = "Checking status…";
+  let lastIndexedLabel = "";
   let currentJobId: string | null = null;
+  let showAdvancedPath = false;
 
   async function refreshStatus() {
     try {
@@ -32,6 +34,16 @@
         return;
       }
       statusLine = `Indexed ${data.assets} items • OCR ${data.with_ocr}/${data.assets}`;
+      if (data.last_indexed_at) {
+        try {
+          const dt = new Date(data.last_indexed_at);
+          lastIndexedLabel = `Last indexed: ${dt.toLocaleString()}`;
+        } catch {
+          lastIndexedLabel = "";
+        }
+      } else {
+        lastIndexedLabel = "";
+      }
       if (data.root) folderInput = data.root;
     } catch {
       statusLine = "Local engine not running (start API server on :8008)";
@@ -96,14 +108,20 @@
           statusLine = j.message ?? "Indexing…";
         }
 
-        if (j.status === "done") break;
+        if (j.status === "done") {
+          const msg = (j.message as string) || "";
+          if (msg.includes("+0 new") && msg.includes("~0 updated") && msg.includes("-0 removed")) {
+            statusLine = "Index up to date";
+          } else {
+            statusLine = "Index updated";
+          }
+          break;
+        }
         if (j.status === "error") throw new Error(j.error ?? "Index failed");
         if (j.status === "cancelled") throw new Error("Index cancelled");
 
         await new Promise((r) => setTimeout(r, 600));
       }
-
-      statusLine = "Index complete";
     } catch (e) {
       statusLine = `Index failed`; // keep it simple in UI
       console.error(e);
@@ -191,13 +209,40 @@
           </div>
         </div>
 
-        <div class="mt-3 flex flex-col sm:flex-row gap-2">
-          <input
-            class="flex-1 px-3 py-2 rounded-lg border border-neutral-200 bg-white focus:outline-none focus:ring-2 focus:ring-black/10"
-            bind:value={folderInput}
-            placeholder="/Users/romanimanov/Desktop"
-          />
+        <div class="mt-3 flex flex-col sm:flex-row gap-2 sm:items-center">
+          <div class="flex-1">
+            <div class="text-[11px] text-neutral-500 mb-1">Selected folder</div>
+            <div class="px-3 py-2 rounded-lg border border-neutral-200 bg-white/80 font-mono text-xs break-all">
+              {folderInput}
+            </div>
+
+            {#if showAdvancedPath}
+              <input
+                class="mt-2 w-full px-3 py-2 rounded-lg border border-neutral-200 bg-white focus:outline-none focus:ring-2 focus:ring-black/10"
+                bind:value={folderInput}
+                placeholder="/Users/romanimanov/Desktop"
+              />
+            {/if}
+
+            {#if lastIndexedLabel}
+              <div class="mt-2 text-[11px] text-neutral-500">{lastIndexedLabel}</div>
+            {/if}
+          </div>
+
           <div class="flex gap-2">
+            <button
+              class="px-4 py-2 rounded-lg bg-white border border-neutral-200 hover:bg-neutral-100"
+              on:click={pickFolder}
+              disabled={indexing}
+            >
+              Choose…
+            </button>
+            <button
+              class="px-3 py-2 rounded-lg bg-white border border-neutral-200 hover:bg-neutral-100"
+              on:click={() => (showAdvancedPath = !showAdvancedPath)}
+            >
+              {showAdvancedPath ? "Hide" : "Edit"}
+            </button>
             <button
               class="px-4 py-2 rounded-lg bg-neutral-900 text-white hover:bg-neutral-700 disabled:opacity-50"
               on:click={runIndex}
@@ -221,7 +266,6 @@
           <button class="px-2 py-1 rounded-md bg-neutral-100 hover:bg-neutral-200" on:click={() => (folderInput = "~/Desktop")}>Desktop</button>
           <button class="px-2 py-1 rounded-md bg-neutral-100 hover:bg-neutral-200" on:click={() => (folderInput = "~/Downloads")}>Downloads</button>
           <button class="px-2 py-1 rounded-md bg-neutral-100 hover:bg-neutral-200" on:click={() => (folderInput = "~/Pictures")}>Pictures</button>
-          <button class="px-2 py-1 rounded-md bg-neutral-100 hover:bg-neutral-200" on:click={pickFolder}>Choose…</button>
         </div>
 
         <p class="mt-2 text-[11px] text-neutral-500">

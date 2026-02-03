@@ -225,6 +225,7 @@ def status() -> dict[str, Any]:
     with_ocr = conn.execute(
         "SELECT count(*) FROM assets WHERE length(coalesce(ocr_text,'')) > 0"
     ).fetchone()[0]
+    last_indexed_at = conn.execute("SELECT MAX(indexed_at) FROM assets").fetchone()[0]
 
     return {
         "indexed": True,
@@ -233,6 +234,7 @@ def status() -> dict[str, Any]:
         "assets": int(total),
         "with_ocr": int(with_ocr),
         "embeddings": int(n_embs),
+        "last_indexed_at": last_indexed_at,
     }
 
 
