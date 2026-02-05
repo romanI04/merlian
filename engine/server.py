@@ -95,6 +95,8 @@ class IndexRequest(BaseModel):
     folder: str | None = None
     device: Literal["auto", "cpu", "mps"] = "auto"
     ocr: bool = True
+    recent_only: bool = False
+    max_items: int | None = Field(default=None, ge=1, le=5000)
 
 
 # In-memory job store (MVP)
@@ -278,7 +280,7 @@ def _job_update(job_id: str, **patch: Any) -> None:
         JOBS[job_id] = Job(**data)
 
 
-def _run_index_job(job_id: str, folder: str | None, device: str, ocr: bool) -> None:
+def _run_index_job(job_id: str, folder: str | None, device: str, ocr: bool, recent_only: bool, max_items: int | None) -> None:
     _job_update(job_id, status="running", started_at=time.time(), message="Starting…")
 
     # Use the CLI as a subprocess so we can parse progress without major refactors.
@@ -293,6 +295,10 @@ def _run_index_job(job_id: str, folder: str | None, device: str, ocr: bool) -> N
         cmd.append(folder)
     cmd.extend(["--device", device])
     cmd.append("--ocr" if ocr else "--no-ocr")
+    if recent_only:
+        cmd.append("--recent-only")
+    if max_items is not None:
+        cmd.extend(["--max-items", str(int(max_items))])
 
     try:
         proc = subprocess.Popen(
@@ -388,7 +394,7 @@ def index(req: IndexRequest) -> dict[str, Any]:
 
     t = threading.Thread(
         target=_run_index_job,
-        args=(job_id, folder, req.device, req.ocr),
+        args=(job_id, folder, req.device, req.ocr, bool(req.recent_only), req.max_items),
         daemon=True,
     )
     t.start()

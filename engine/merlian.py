@@ -67,6 +67,11 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
             size_bytes INTEGER NOT NULL,
             width INTEGER,
             height INTEGER,
+            -- Light signals used to create a curated “personal gallery” experience.
+            kind TEXT,                 -- screenshot|photo|document|unknown
+            textiness REAL,            -- 0..1 (how text-heavy, from OCR)
+            quality_score REAL,        -- 0..1 (downrank tiny/blank/low-info)
+            dup_group TEXT,            -- near-duplicate group id (cheap hash)
             ocr_text TEXT,
             indexed_at TEXT NOT NULL
         );
@@ -75,8 +80,16 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
 
     # Lightweight migration for older DBs.
     cols = [r[1] for r in conn.execute("PRAGMA table_info(assets)").fetchall()]
-    if "ocr_text" not in cols:
-        conn.execute("ALTER TABLE assets ADD COLUMN ocr_text TEXT")
+
+    def _add(col: str, ddl: str) -> None:
+        if col not in cols:
+            conn.execute(f"ALTER TABLE assets ADD COLUMN {ddl}")
+
+    _add("kind", "kind TEXT")
+    _add("textiness", "textiness REAL")
+    _add("quality_score", "quality_score REAL")
+    _add("dup_group", "dup_group TEXT")
+    _add("ocr_text", "ocr_text TEXT")
 
     # OCR full-text index (SQLite FTS5).
     # We keep this separate and simple to avoid trigger complexity.
@@ -205,6 +218,75 @@ def load_embeddings(emb_path: Path) -> Optional[np.ndarray]:
     return np.load(emb_path)
 
 
+def guess_kind(path: Path, w: int | None, h: int | None) -> str:
+    """Best-effort, cheap content-type guess.
+
+    We keep this heuristic and local. It’s used only to shape the UI/gallery.
+    """
+    p = str(path).lower()
+    name = path.name.lower()
+    parent = (path.parent.name or "").lower()
+
+    if "screenshot" in name or "screen shot" in name or "screenshots" in parent:
+        return "screenshot"
+
+    # Very rough: wide, text-heavy captures often have these aspect ratios.
+    if w and h:
+        ar = w / max(1, h)
+        if ar > 1.35 and w >= 900 and h >= 500:
+            return "screenshot"
+
+    # No strong guess.
+    return "unknown"
+
+
+def textiness_from_ocr(ocr_txt: str) -> float:
+    t = (ocr_txt or "").strip()
+    if not t:
+        return 0.0
+    # Cheap proxy: longer OCR → more text-heavy (cap at ~1200 chars).
+    return float(min(1.0, len(t) / 1200.0))
+
+
+def quality_score(path: Path, w: int | None, h: int | None, size_bytes: int) -> float:
+    """0..1 score to downrank junk (tiny images, blanks, etc.)."""
+    if not w or not h:
+        return 0.25
+
+    min_dim = min(w, h)
+    max_dim = max(w, h)
+
+    # Hard reject tiny.
+    if min_dim < 220 or max_dim < 400:
+        return 0.05
+
+    # Prefer reasonably sized images.
+    size_score = min(1.0, max(0.0, (size_bytes - 20_000) / 400_000))
+    dim_score = min(1.0, max(0.0, (min_dim - 300) / 900))
+
+    return float(0.35 + 0.35 * dim_score + 0.30 * size_score)
+
+
+def ahash64(path: Path) -> str:
+    """Cheap perceptual hash for near-duplicate grouping.
+
+    Not cryptographic; not stable across large transforms. Good enough to collapse
+    common “same screenshot twice” patterns.
+    """
+    try:
+        with Image.open(path) as img:
+            im = img.convert("L").resize((8, 8))
+            arr = np.asarray(im, dtype=np.float32)
+            avg = float(arr.mean())
+            bits = (arr > avg).astype(np.uint8).reshape(-1)
+            val = 0
+            for b in bits:
+                val = (val << 1) | int(b)
+            return f"a{val:016x}"
+    except Exception:
+        return ""
+
+
 @click.group()
 def cli():
     pass
@@ -228,7 +310,19 @@ def cli():
     show_default=True,
     help="Extract text from images using Apple Vision OCR (macOS).",
 )
-def index(folder: Path | None, device: str, ocr: bool):
+@click.option(
+    "--recent-only/--all",
+    default=False,
+    show_default=True,
+    help="Index most-recent files first (useful for fast onboarding).",
+)
+@click.option(
+    "--max-items",
+    type=int,
+    default=None,
+    help="Cap the number of images indexed (pairs well with --recent-only).",
+)
+def index(folder: Path | None, device: str, ocr: bool, recent_only: bool, max_items: int | None):
     """Index images under FOLDER (or the last indexed folder)."""
 
     paths = get_dbpaths()
@@ -287,6 +381,11 @@ def index(folder: Path | None, device: str, ocr: bool):
     path_to_idx = {p: i for i, p in enumerate(paths_list)}
 
     images = list(iter_images(folder))
+    if recent_only:
+        images.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    if max_items is not None and max_items > 0:
+        images = images[:max_items]
+
     use_tqdm = sys.stderr.isatty()
     iterator = tqdm(images, desc="images") if use_tqdm else images
 
@@ -327,19 +426,28 @@ def index(folder: Path | None, device: str, ocr: bool):
 
         ocr_txt = ocr_text_apple_vision(p) if ocr else ""
 
+        knd = guess_kind(p, w, h)
+        txty = textiness_from_ocr(ocr_txt)
+        q = quality_score(p, w, h, size)
+        dg = ahash64(p)
+
         conn.execute(
             """
-            INSERT INTO assets(path, mtime, size_bytes, width, height, ocr_text, indexed_at)
-            VALUES(?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO assets(path, mtime, size_bytes, width, height, kind, textiness, quality_score, dup_group, ocr_text, indexed_at)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(path) DO UPDATE SET
               mtime=excluded.mtime,
               size_bytes=excluded.size_bytes,
               width=excluded.width,
               height=excluded.height,
+              kind=excluded.kind,
+              textiness=excluded.textiness,
+              quality_score=excluded.quality_score,
+              dup_group=excluded.dup_group,
               ocr_text=excluded.ocr_text,
               indexed_at=excluded.indexed_at
             """,
-            (p_str, mtime, size, w, h, ocr_txt, now),
+            (p_str, mtime, size, w, h, knd, txty, q, dg, ocr_txt, now),
         )
 
         # Update OCR full-text index.
