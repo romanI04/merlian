@@ -85,83 +85,49 @@
           in:fade={{ delay: 300 }}
         >
           merlian
-          {#if mode === "demo"}
-            <span class="text-base font-sans font-normal text-gray-500">(demo gallery)</span>
-          {:else}
-            <span class="text-base font-sans font-normal text-gray-500">(local)</span>
-          {/if}
         </h2>
-        <p class="sm:text-xl" in:fade={{ delay: 600 }}>
-          <a
-            target="_blank"
-            rel="noopener noreferrer"
-            href="https://github.com/romanI04/merlian">repo</a
-          >
+      </div>
+
+      <div class="max-w-2xl text-center">
+        <p
+          class="tagline text-4xl md:text-5xl lg:text-6xl xl:text-7xl"
+          in:fade={{ delay: 800 }}
+        >
+          Every screenshot you've ever taken.
+          <span class="text-[105%] font-serif italic">Findable in seconds.</span>
         </p>
-        <p class="mt-3 max-w-xl text-center text-sm text-gray-600" in:fade={{ delay: 800 }}>
-          {#if mode === "demo"}
-            Explore the demo gallery instantly — no setup required.
-          {:else}
-            Index a folder on your machine, then search it with plain language.
-          {/if}
+
+        <p class="mt-6 text-lg text-gray-600 max-w-lg mx-auto" in:fade={{ delay: 1200 }}>
+          Error messages, receipts, confirmation codes, meeting notes —
+          type what you remember. Nothing leaves your machine.
         </p>
       </div>
 
-      <p
-        class="tagline text-5xl md:text-6xl lg:text-7xl xl:text-8xl text-center"
-      >
-        <span in:fade={{ delay: 1200 }}
-          >Search your <span class="text-[105%] font-serif italic"
-            >visual memory</span
-          ></span
-        ><br />
-        <span in:fade={{ delay: 1800 }}
-          >with <span class="text-[105%] font-serif">plain language</span></span
+      <div class="py-10 flex flex-col items-center gap-3" in:fade={{ delay: 1800 }}>
+        <button
+          class="rounded-full px-6 py-2.5 bg-black text-white text-lg
+          hover:bg-white hover:text-black hover:ring-1 hover:ring-black
+          active:bg-rose-100 active:text-black active:ring-1 active:ring-black transition-colors"
+          on:click={() => {
+            window.location.hash = "#/demo";
+            dispatch("close");
+          }}
         >
-      </p>
-
-      <div class="py-10 flex flex-col items-center gap-3" in:fade={{ delay: 2600 }}>
-        {#if mode === "demo"}
-          <button
-            class="rounded-full px-5 py-2 bg-black text-white text-lg
-            hover:bg-white hover:text-black hover:ring-1 hover:ring-black
-            active:bg-rose-100 active:text-black active:ring-1 active:ring-black transition-colors"
-            on:click={() => {
-              window.location.hash = "#/demo";
-              dispatch("close");
-            }}
-          >
-            Try the demo gallery
-          </button>
-          <button
-            class="rounded-full px-5 py-2 bg-white text-black text-lg ring-1 ring-black/20
-            hover:ring-black hover:bg-neutral-50 transition-colors"
-            on:click={() => {
-              window.location.hash = "#/local";
-              dispatch("close");
-            }}
-          >
-            Search my own library (local)
-          </button>
-          <p class="text-xs text-gray-500 max-w-xl text-center">
-            Demo uses the Harvard Art Museums dataset. Local mode searches files on your machine.
-          </p>
-        {:else}
-          <button
-            class="rounded-full px-5 py-2 bg-black text-white text-lg
-            hover:bg-white hover:text-black hover:ring-1 hover:ring-black
-            active:bg-rose-100 active:text-black active:ring-1 active:ring-black transition-colors"
-            on:click={() => dispatch("close")}
-          >
-            Start searching
-          </button>
-          <a
-            class="text-sm text-gray-600 hover:underline"
-            href="#/demo"
-            on:click={() => (window.location.hash = "#/demo")}
-            >Try the demo gallery</a
-          >
-        {/if}
+          Try the demo
+        </button>
+        <button
+          class="rounded-full px-6 py-2.5 bg-white text-black text-lg ring-1 ring-black/20
+          hover:ring-black hover:bg-neutral-50 transition-colors"
+          on:click={() => {
+            window.location.hash = "#/local";
+            dispatch("close");
+          }}
+        >
+          Search my own library
+        </button>
+        <p class="mt-2 text-xs text-gray-500 max-w-md text-center">
+          100% local. No cloud. No account. Your files never leave your machine.
+        </p>
       </div>
     {/if}
   </div>
@@ -184,9 +150,5 @@
   p.tagline {
     font-variation-settings: "GRAD" 150, "YOPQ" 50, "XTRA" 500, "YTLC" 570;
     @apply tracking-tight;
-  }
-
-  a {
-    @apply font-light hover:underline hover:decoration-1 hover:underline-offset-2;
   }
 </style>

@@ -3,3 +3,22 @@
 
 # optional convenience alias (symlink)
 ui
+
+# engine data (old location — now at ~/Library/Application Support/Merlian/)
+engine/.merlian/
+
+# Python venv
+engine/.venv/
+
+# Frontend build artifacts
+dispict/dist/
+dispict/node_modules/
+
+# Demo dataset images (generated, too large for git)
+demo-dataset/**/*.png
+demo-dataset/**/*.jpg
+
+# PyInstaller / packaging
+*.spec
+build/
+dist/

@@ -9,19 +9,19 @@
   export let mode: "demo" | "local" = "demo";
 
   const EXAMPLE_SEARCHES_DEMO = [
-    "bauhaus letterhead",
-    "minimalist black logo",
-    "abstract painting",
-    "typography poster",
-    "portrait with red",
+    "error message",
+    "receipt total",
+    "confirmation code",
+    "dashboard chart",
+    "terminal output",
   ];
 
   const EXAMPLE_SEARCHES_LOCAL = [
     "error 403",
-    "invoice total",
-    "meeting notes",
-    "code editor",
     "receipt total",
+    "confirmation code",
+    "meeting invite",
+    "deploy failed",
   ];
 
   $: EXAMPLE_SEARCHES = mode === "local" ? EXAMPLE_SEARCHES_LOCAL : EXAMPLE_SEARCHES_DEMO;
@@ -148,7 +148,7 @@
   }
 
   .search:empty::before {
-    content: "Search your images (e.g. \"minimalist black logo\", \"chart about inflation\")";
+    content: "Search your screenshots (e.g. \"error 403\", \"receipt total\")";
     @apply text-gray-400;
   }
 

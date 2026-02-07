@@ -10,15 +10,57 @@
   const dispatch = createEventDispatcher<{ close: void }>();
 
   export let artwork: Artwork;
+  export let query: string = "";
 
   $: isLocal = Boolean(artwork?.url?.startsWith("/") && !artwork?.url?.startsWith("http"));
+
+  function formatFileSize(bytes: number): string {
+    if (!bytes) return "";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  function formatDate(ts: number): string {
+    if (!ts) return "";
+    try {
+      return new Date(ts * 1000).toLocaleDateString(undefined, {
+        year: "numeric", month: "short", day: "numeric",
+        hour: "2-digit", minute: "2-digit",
+      });
+    } catch {
+      return "";
+    }
+  }
+
+  /** Highlight matched tokens in OCR text. XSS-safe: we escape then insert <mark> tags. */
+  function highlightOcr(text: string, tokens: string[]): string {
+    if (!text || !tokens?.length) return escapeHtml(text || "");
+    let escaped = escapeHtml(text);
+    for (const token of tokens) {
+      if (!token) continue;
+      const escapedToken = escapeHtml(token);
+      const re = new RegExp(`(${escapedToken.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
+      escaped = escaped.replace(re, "<mark>$1</mark>");
+    }
+    return escaped;
+  }
+
+  function escapeHtml(s: string): string {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  // Extract tokens from query for highlighting
+  $: queryTokens = query
+    ? query.toLowerCase().split(/[^a-zA-Z0-9]+/).filter((t) => t.length >= 2)
+    : (artwork.matched_tokens ?? []);
 </script>
 
-<div class="text-neutral-900 p-6">
+<div class={isLocal ? "bg-stone-900 text-stone-100 p-6" : "text-neutral-900 p-6"}>
   <div class="flex justify-end mb-4">
     <button
       on:click={() => dispatch("close")}
-      class="p-1 rounded-md hover:bg-neutral-200"
+      class={isLocal ? "p-1 rounded-md hover:bg-stone-700" : "p-1 rounded-md hover:bg-neutral-200"}
     >
       <svg
         width="20"
@@ -42,12 +84,12 @@
 
   <div class="mb-8">
     <h2 class="text-2xl fontvar-heading mb-1">{artwork.title}</h2>
-    <p class="text-neutral-500 text-sm">{artwork.objectnumber}</p>
+    <p class={isLocal ? "text-stone-400 text-sm" : "text-neutral-500 text-sm"}>{artwork.objectnumber}</p>
 
     {#if isLocal}
       <div class="flex gap-2 mt-4">
         <button
-          class="inline-block px-3 py-1.5 bg-neutral-900 text-white hover:bg-neutral-700 rounded-md"
+          class="inline-block px-3 py-1.5 bg-white text-stone-900 hover:bg-stone-200 rounded-md"
           on:click={async () => {
             const base = (LOCAL_API_URL.endsWith("/")
               ? LOCAL_API_URL.slice(0, -1)
@@ -62,7 +104,7 @@
           Open
         </button>
         <button
-          class="inline-block px-3 py-1.5 bg-white border border-neutral-200 hover:bg-neutral-100 rounded-md"
+          class="inline-block px-3 py-1.5 bg-stone-700 text-stone-100 hover:bg-stone-600 rounded-md border border-stone-600"
           on:click={async () => {
             const base = (LOCAL_API_URL.endsWith("/")
               ? LOCAL_API_URL.slice(0, -1)
@@ -74,7 +116,7 @@
             });
           }}
         >
-          Reveal
+          Reveal in Finder
         </button>
       </div>
     {:else}
@@ -109,63 +151,109 @@
   </div>
 
   <dl>
-    <dt>
-      Creator{#if artwork.people.length > 1}s{/if}
-    </dt>
-    <dd>
-      {#each artwork.people as name}<p>{name}</p>{:else}Unknown{/each}
-    </dd>
-
-    {#if artwork.dated}
-      <dt>Date</dt>
-      <dd>{artwork.dated}</dd>
-    {/if}
-
-    {#if isLocal && artwork.description}
-      <dt>Matched text</dt>
-      <dd class="whitespace-pre-wrap text-neutral-700">{artwork.description}</dd>
-    {/if}
-
-    <dt>Medium</dt>
-    <dd>
-      {#if artwork.technique && artwork.medium}
-        {artwork.technique} / {artwork.medium}
-      {:else if artwork.technique}
-        {artwork.technique}
-      {:else if artwork.medium}
-        {artwork.medium}
-      {:else}
-        N/A
-      {/if}
-    </dd>
-
-    {#if artwork.dimensions}
-      <dt>Dimensions</dt>
-      <dd class="whitespace-pre-wrap">{artwork.dimensions}</dd>
-    {/if}
-
     {#if isLocal}
-      <dt class="mt-8">File</dt>
-      <dd class="text-neutral-600 break-all">{artwork.url}</dd>
+      <!-- Local mode: rich metadata -->
+      {#if artwork.created_at}
+        <dt>Created</dt>
+        <dd>{formatDate(artwork.created_at)}</dd>
+      {/if}
+
+      {#if artwork.file_size}
+        <dt>File size</dt>
+        <dd>{formatFileSize(artwork.file_size)}</dd>
+      {/if}
+
+      <dt>Dimensions</dt>
+      <dd>{artwork.dimensions}</dd>
+
+      {#if artwork.folder}
+        <dt>Folder</dt>
+        <dd class="break-all">{artwork.folder}</dd>
+      {/if}
+
+      {#if artwork.ocr_word_count}
+        <dt>OCR words</dt>
+        <dd>{artwork.ocr_word_count}</dd>
+      {/if}
+
+      {#if artwork.description}
+        <dt class="mt-6">Matched text</dt>
+        <dd class="whitespace-pre-wrap ocr-preview">{@html highlightOcr(artwork.description, queryTokens)}</dd>
+      {/if}
+
+      <dt class="mt-6">File path</dt>
+      <dd class="break-all">{artwork.url}</dd>
     {:else}
-      <dt class="mt-8">Demo dataset</dt>
-      <dd class="text-neutral-600">
-        Harvard Art Museums demo gallery.
+      <!-- Demo mode: original Dispict-style metadata -->
+      <dt>
+        Creator{#if artwork.people.length > 1}s{/if}
+      </dt>
+      <dd>
+        {#each artwork.people as name}<p>{name}</p>{:else}Unknown{/each}
       </dd>
+
+      {#if artwork.dated}
+        <dt>Date</dt>
+        <dd>{artwork.dated}</dd>
+      {/if}
+
+      <dt>Medium</dt>
+      <dd>
+        {#if artwork.technique && artwork.medium}
+          {artwork.technique} / {artwork.medium}
+        {:else if artwork.technique}
+          {artwork.technique}
+        {:else if artwork.medium}
+          {artwork.medium}
+        {:else}
+          N/A
+        {/if}
+      </dd>
+
+      {#if artwork.dimensions}
+        <dt>Dimensions</dt>
+        <dd class="whitespace-pre-wrap">{artwork.dimensions}</dd>
+      {/if}
+
+      <dt class="mt-8">Demo dataset</dt>
+      <dd>Curated screenshot demo gallery.</dd>
     {/if}
   </dl>
 </div>
 
 <style lang="postcss">
   dt {
-    @apply text-xs font-semibold uppercase text-neutral-500;
+    @apply text-xs font-semibold uppercase;
+  }
+
+  :global(.bg-stone-900) dt {
+    color: theme(colors.stone.400);
+  }
+
+  :global(:not(.bg-stone-900)) dt {
+    @apply text-neutral-500;
   }
 
   dd {
-    @apply text-neutral-800 text-sm;
+    @apply text-sm;
+  }
+
+  :global(.bg-stone-900) dd {
+    color: theme(colors.stone.200);
+  }
+
+  :global(:not(.bg-stone-900)) dd {
+    @apply text-neutral-800;
   }
 
   dd:not(:last-of-type) {
     @apply mb-5;
+  }
+
+  .ocr-preview :global(mark) {
+    background-color: theme(colors.amber.400 / 40%);
+    color: inherit;
+    padding: 0 2px;
+    border-radius: 2px;
   }
 </style>

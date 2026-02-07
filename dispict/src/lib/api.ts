@@ -35,6 +35,13 @@ export type Artwork = {
 
   copyright: string | null;
   creditline: string;
+
+  // Merlian local-mode extensions
+  matched_tokens?: string[];
+  file_size?: number;
+  created_at?: number;
+  folder?: string;
+  ocr_word_count?: number;
 };
 
 export type SearchResult = {
@@ -99,6 +106,8 @@ export async function loadSuggestions(
       const h = r.height ?? 800;
       const path = r.path as string;
       const filename = path.split("/").slice(-1)[0] ?? path;
+      const ocrText = (r.ocr_preview as string) || "";
+      const ocrWordCount = ocrText.trim() ? ocrText.trim().split(/\s+/).length : 0;
 
       const artwork: Artwork = {
         id: i,
@@ -117,10 +126,10 @@ export async function loadSuggestions(
         dimwidth: w / 200,
 
         title: filename,
-        description: (r.ocr_preview as string) || null,
+        description: ocrText || null,
         labeltext: null,
         people: [],
-        dated: "",
+        dated: r.created_at ? new Date(r.created_at * 1000).toLocaleDateString() : "",
         datebegin: 0,
         dateend: 0,
         century: null,
@@ -139,6 +148,13 @@ export async function loadSuggestions(
 
         copyright: null,
         creditline: "",
+
+        // Merlian extensions
+        matched_tokens: r.matched_tokens ?? [],
+        file_size: r.file_size ?? 0,
+        created_at: r.created_at ?? 0,
+        folder: r.folder ?? "",
+        ocr_word_count: ocrWordCount,
       };
 
       return { score: r.score ?? 0, artwork };

@@ -93,6 +93,7 @@ app.add_middleware(
 
 class IndexRequest(BaseModel):
     folder: str | None = None
+    folders: list[str] | None = None
     device: Literal["auto", "cpu", "mps"] = "auto"
     ocr: bool = True
     recent_only: bool = False
@@ -223,22 +224,163 @@ def pick_folder() -> dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"picker failed: {e}")
 
 
+@app.get("/detect-folders")
+def detect_folders() -> dict[str, Any]:
+    """Detect common screenshot/image folders on macOS."""
+    candidates = [
+        Path.home() / "Desktop",
+        Path.home() / "Pictures" / "Screenshots",
+        Path.home() / "Downloads",
+    ]
+
+    # Check macOS screencapture location
+    try:
+        result = subprocess.run(
+            ["defaults", "read", "com.apple.screencapture", "location"],
+            capture_output=True, text=True, timeout=5,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            custom = Path(result.stdout.strip()).expanduser()
+            if custom.is_dir() and custom not in candidates:
+                candidates.insert(0, custom)
+    except Exception:
+        pass
+
+    folders: list[dict] = []
+    for folder in candidates:
+        if not folder.exists():
+            continue
+        # Quick count: non-recursive scandir for speed
+        count = 0
+        accessible = True
+        try:
+            for entry in os.scandir(folder):
+                if entry.is_file() and entry.name.lower().split(".")[-1] in ("png", "jpg", "jpeg", "webp"):
+                    count += 1
+        except PermissionError:
+            accessible = False
+        except Exception:
+            pass
+
+        folders.append({
+            "path": str(folder),
+            "count": count,
+            "accessible": accessible,
+        })
+
+    return {"folders": folders}
+
+
+@app.get("/check-permissions")
+def check_permissions() -> dict[str, Any]:
+    """Check filesystem permissions for detected folders."""
+    det = detect_folders()
+    accessible = [f for f in det["folders"] if f["accessible"]]
+    denied = [f for f in det["folders"] if not f["accessible"]]
+    suggestion = ""
+    if denied:
+        suggestion = "Grant Full Disk Access in System Preferences > Privacy & Security > Full Disk Access"
+    return {
+        "accessible": accessible,
+        "denied": denied,
+        "suggestion": suggestion,
+    }
+
+
+@app.post("/suggest-queries")
+def suggest_queries() -> dict[str, Any]:
+    """Suggest relevant search queries based on indexed OCR content."""
+    paths = core.get_dbpaths()
+    if not paths.db.exists():
+        return {"suggestions": []}
+
+    conn = core.sqlite3.connect(paths.db)
+    rows = conn.execute(
+        "SELECT ocr_text FROM assets WHERE length(COALESCE(ocr_text,'')) > 20 ORDER BY mtime DESC LIMIT 500"
+    ).fetchall()
+
+    if not rows:
+        return {"suggestions": []}
+
+    # Score against known patterns
+    import re as _re
+    patterns = [
+        (_re.compile(r'\$\d+|total|invoice|receipt', _re.I), "receipt or invoice", 0),
+        (_re.compile(r'error|exception|traceback|failed|errno', _re.I), "error message", 0),
+        (_re.compile(r'confirm|code|verification|OTP|2FA', _re.I), "confirmation code", 0),
+        (_re.compile(r'meeting|calendar|invite|schedule|agenda', _re.I), "calendar or meeting", 0),
+        (_re.compile(r'dashboard|analytics|chart|graph|metrics', _re.I), "dashboard or chart", 0),
+        (_re.compile(r'terminal|bash|\$\s|>>>', _re.I), "terminal output", 0),
+        (_re.compile(r'order|shipping|tracking|delivered', _re.I), "order or shipping", 0),
+    ]
+
+    # Count matches
+    scored = []
+    for pattern, label, _ in patterns:
+        hits = sum(1 for (txt,) in rows if pattern.search(txt or ""))
+        if hits > 0:
+            scored.append({"query": label, "confidence": min(1.0, hits / 20.0), "hits": hits})
+
+    scored.sort(key=lambda x: x["confidence"], reverse=True)
+    return {"suggestions": scored[:3]}
+
+
+@app.get("/warm-status")
+def warm_status() -> dict[str, Any]:
+    """Non-blocking check if CLIP model is already cached/loaded."""
+    cached = _is_model_cached()
+    loaded = len(MODEL_CACHE) > 0
+    if loaded:
+        return {"status": "ready", "cached": True, "loaded": True}
+    elif cached:
+        return {"status": "cached", "cached": True, "loaded": False, "message": "Model cached, loading..."}
+    else:
+        return {"status": "downloading", "cached": False, "loaded": False, "message": "Downloading AI model (577 MB)..."}
+
+
+def _is_model_cached(model_name: str = "ViT-B-32", pretrained: str = "laion2b_s34b_b79k") -> bool:
+    """Check if CLIP model weights are already downloaded."""
+    cache_dir = Path.home() / ".cache" / "huggingface" / "hub"
+    if cache_dir.exists():
+        # open_clip stores in huggingface cache; check for any matching blob
+        for p in cache_dir.rglob("*.bin"):
+            if p.stat().st_size > 300_000_000:  # >300MB = likely the model
+                return True
+    # Also check open_clip's own cache
+    oc_cache = Path.home() / ".cache" / "open_clip"
+    if oc_cache.exists():
+        for p in oc_cache.rglob("*"):
+            if p.stat().st_size > 300_000_000:
+                return True
+    return False
+
+
 @app.post("/warm")
 def warm(device: Literal["auto", "cpu", "mps"] = "auto") -> dict[str, Any]:
     """Warm the CLIP model so first search is instant."""
     if device == "auto":
         device = "mps" if core.torch.backends.mps.is_available() else "cpu"
 
-    paths = core.get_dbpaths()
-    if not paths.meta.exists():
-        return {"ok": False, "error": "no index"}
+    model_name = "ViT-B-32"
+    pretrained = "laion2b_s34b_b79k"
 
-    meta = core.json.loads(paths.meta.read_text())
-    model_name = meta.get("model", {}).get("name", "ViT-B-32")
-    pretrained = meta.get("model", {}).get("pretrained", "laion2b_s34b_b79k")
+    # Check if we have a pre-existing index with model info
+    paths = core.get_dbpaths()
+    if paths.meta.exists():
+        meta = core.json.loads(paths.meta.read_text())
+        model_name = meta.get("model", {}).get("name", model_name)
+        pretrained = meta.get("model", {}).get("pretrained", pretrained)
+
+    cached = _is_model_cached(model_name, pretrained)
 
     _get_model(device, model_name, pretrained)
-    return {"ok": True, "device": device, "model": {"name": model_name, "pretrained": pretrained}}
+    return {
+        "ok": True,
+        "device": device,
+        "model": {"name": model_name, "pretrained": pretrained},
+        "was_cached": cached,
+        "status": "ready",
+    }
 
 
 @app.get("/status")
@@ -262,11 +404,13 @@ def status() -> dict[str, Any]:
     return {
         "indexed": True,
         "root": meta.get("root"),
+        "roots": meta.get("roots", [meta.get("root")] if meta.get("root") else []),
         "model": meta.get("model"),
         "assets": int(total),
         "with_ocr": int(with_ocr),
         "embeddings": int(n_embs),
         "last_indexed_at": last_indexed_at,
+        "data_dir": str(paths.root),
     }
 
 
@@ -280,7 +424,7 @@ def _job_update(job_id: str, **patch: Any) -> None:
         JOBS[job_id] = Job(**data)
 
 
-def _run_index_job(job_id: str, folder: str | None, device: str, ocr: bool, recent_only: bool, max_items: int | None) -> None:
+def _run_index_job(job_id: str, folders: list[str], device: str, ocr: bool, recent_only: bool, max_items: int | None) -> None:
     _job_update(job_id, status="running", started_at=time.time(), message="Starting…")
 
     # Use the CLI as a subprocess so we can parse progress without major refactors.
@@ -291,8 +435,8 @@ def _run_index_job(job_id: str, folder: str | None, device: str, ocr: bool, rece
         str(Path(__file__).parent / "merlian.py"),
         "index",
     ]
-    if folder:
-        cmd.append(folder)
+    for f in folders:
+        cmd.append(f)
     cmd.extend(["--device", device])
     cmd.append("--ocr" if ocr else "--no-ocr")
     if recent_only:
@@ -384,17 +528,22 @@ def cancel_job(job_id: str) -> Job:
 
 @app.post("/index")
 def index(req: IndexRequest) -> dict[str, Any]:
-    folder = str(Path(req.folder).expanduser()) if req.folder else None
+    # Support both single folder and multi-folder
+    folders: list[str] = []
+    if req.folders:
+        folders = [str(Path(f).expanduser()) for f in req.folders]
+    elif req.folder:
+        folders = [str(Path(req.folder).expanduser())]
 
     job_id = uuid.uuid4().hex
-    job = Job(id=job_id, kind="index", status="queued", folder=folder, processed=0, total=None)
+    job = Job(id=job_id, kind="index", status="queued", folder=folders[0] if folders else None, processed=0, total=None)
 
     with JOB_LOCK:
         JOBS[job_id] = job
 
     t = threading.Thread(
         target=_run_index_job,
-        args=(job_id, folder, req.device, req.ocr, bool(req.recent_only), req.max_items),
+        args=(job_id, folders, req.device, req.ocr, bool(req.recent_only), req.max_items),
         daemon=True,
     )
     t.start()
@@ -502,56 +651,116 @@ def search(req: SearchRequest) -> dict[str, Any]:
     elif req.mode == "ocr":
         scores = ocr_scores
     else:
-        # hybrid
-        w = float(req.ocr_weight)
+        # hybrid — per-asset OCR weighting based on textiness (1.1)
+        conn_sig = core.sqlite3.connect(paths.db)
+        base_w = float(req.ocr_weight)
+
+        # Build per-asset arrays for quality signals
+        n_assets = len(paths_list)
+        textiness_arr = core.np.full(n_assets, 0.0, dtype="float32")
+        quality_arr = core.np.full(n_assets, 0.5, dtype="float32")
+        mtime_arr = core.np.full(n_assets, 0.0, dtype="float32")
+        dup_group_arr: list[str] = [""] * n_assets
+
+        ph = ",".join(["?"] * n_assets) if n_assets else ""
+        if n_assets:
+            rows_sig = conn_sig.execute(
+                f"SELECT path, COALESCE(textiness,0), COALESCE(quality_score,0.5), COALESCE(mtime,0), COALESCE(dup_group,'') FROM assets WHERE path IN ({ph})",
+                tuple(paths_list),
+            ).fetchall()
+            sig_map = {r[0]: r[1:] for r in rows_sig}
+            for i, p in enumerate(paths_list):
+                vals = sig_map.get(p)
+                if vals:
+                    textiness_arr[i] = float(vals[0])
+                    quality_arr[i] = float(vals[1])
+                    mtime_arr[i] = float(vals[2])
+                    dup_group_arr[i] = str(vals[3])
+
+        # 1.1: Per-asset OCR weight based on textiness
         q_lower = req.query.lower()
         has_digits = any(ch.isdigit() for ch in req.query)
         texty_keywords = [
-            "error",
-            "code",
-            "http",
-            "forbidden",
-            "denied",
-            "invoice",
-            "receipt",
-            "total",
-            "$",
-            "usd",
-            "cad",
+            "error", "code", "http", "forbidden", "denied",
+            "invoice", "receipt", "total", "$", "usd", "cad",
         ]
         looks_texty = has_digits or any(k in q_lower for k in texty_keywords)
         if looks_texty:
-            w = max(w, 0.80)
-        w = 0.0 if w < 0 else (1.0 if w > 1 else w)
-        scores = (1.0 - w) * clip_scores + w * ocr_scores
+            base_w = max(base_w, 0.80)
 
-    topk = core.np.argsort(-scores)[: req.k]
+        w_per = core.np.clip(base_w + 0.25 * textiness_arr, 0.0, 1.0)
+        scores = (1.0 - w_per) * clip_scores + w_per * ocr_scores
 
-    # Pull OCR preview text for just the top results (helps UX without exposing full text everywhere).
+        # 1.2: Quality score dampening
+        scores *= (0.3 + 0.7 * quality_arr)
+
+        # 1.3: Recency bias
+        import time as _time
+        now_ts = _time.time()
+        days_ago = (now_ts - mtime_arr) / 86400.0
+        recency = 1.0 + 0.15 * core.np.clip(1.0 - days_ago / 365.0, 0.0, 1.0)
+        scores *= recency
+
+    # 1.4: Deduplication via dup_group — pull extra candidates, then deduplicate
+    if req.mode == "hybrid":
+        # Get more candidates than needed, then deduplicate
+        candidate_k = min(len(scores), req.k * 3)
+        all_sorted = core.np.argsort(-scores)[:candidate_k]
+        seen_groups: set[str] = set()
+        topk_list: list[int] = []
+        for idx in all_sorted:
+            dg = dup_group_arr[int(idx)]
+            if dg and dg in seen_groups:
+                continue
+            if dg:
+                seen_groups.add(dg)
+            topk_list.append(int(idx))
+            if len(topk_list) >= req.k:
+                break
+        topk = core.np.array(topk_list, dtype=int)
+    else:
+        topk = core.np.argsort(-scores)[: req.k]
+
+    # Pull OCR preview + metadata for just the top results.
     conn = core.sqlite3.connect(paths.db)
     top_paths = [paths_list[int(i)] for i in topk]
     ph = ",".join(["?"] * len(top_paths)) if top_paths else ""
     ocr_preview: dict[str, str] = {}
+    asset_meta: dict[str, dict] = {}
     if top_paths:
         rows = conn.execute(
-            f"SELECT path, COALESCE(ocr_text,'') FROM assets WHERE path IN ({ph})",
+            f"SELECT path, COALESCE(ocr_text,''), size_bytes, mtime, width, height FROM assets WHERE path IN ({ph})",
             tuple(top_paths),
         ).fetchall()
-        for p, txt in rows:
+        for p, txt, sz, mt, aw, ah in rows:
             t = (txt or "").replace("\n", " ").strip()
-            if len(t) > 180:
-                t = t[:180] + "…"
+            if len(t) > 300:
+                t = t[:300] + "…"
             ocr_preview[str(p)] = t
+            asset_meta[str(p)] = {"file_size": sz, "mtime": mt, "db_width": aw, "db_height": ah}
 
     results = []
     for idx_id in topk:
         p = paths_list[int(idx_id)]
-        w = h = None
-        try:
-            with Image.open(p) as im:
-                w, h = im.size
-        except Exception:
-            pass
+        meta_info = asset_meta.get(p, {})
+        w = meta_info.get("db_width")
+        h = meta_info.get("db_height")
+        if not w or not h:
+            try:
+                with Image.open(p) as im:
+                    w, h = im.size
+            except Exception:
+                pass
+
+        # Compute matched tokens for highlighting
+        ocr_text_full = ocr_preview.get(p, "")
+        matched = [t for t in q_tokens if t in ocr_text_full.lower()] if q_tokens else []
+
+        # File metadata for sidebar
+        file_path = Path(p)
+        folder_path = str(file_path.parent)
+        file_size = meta_info.get("file_size", 0)
+        created_at = meta_info.get("mtime", 0)
 
         results.append(
             {
@@ -560,10 +769,23 @@ def search(req: SearchRequest) -> dict[str, Any]:
                 "clip": float(clip_scores[int(idx_id)]),
                 "ocr": float(ocr_scores[int(idx_id)]),
                 "ocr_preview": ocr_preview.get(p, ""),
+                "matched_tokens": matched,
                 "width": w,
                 "height": h,
+                "file_size": file_size,
+                "created_at": created_at,
+                "folder": folder_path,
                 "thumb_url": f"/thumb?path={p}",
             }
         )
 
-    return {"results": results}
+    return {"results": results, "matched_tokens": q_tokens}
+
+
+# Static file serving: serve built frontend from FastAPI when MERLIAN_SERVE_FRONTEND=1
+# This allows single-process deployment (one port for API + frontend).
+if os.environ.get("MERLIAN_SERVE_FRONTEND") == "1":
+    dist_dir = Path(__file__).parent.parent / "dispict" / "dist"
+    if dist_dir.is_dir():
+        from fastapi.staticfiles import StaticFiles
+        app.mount("/", StaticFiles(directory=str(dist_dir), html=True), name="frontend")

@@ -14,22 +14,36 @@
     // @ts-ignore
     (import.meta as any).env?.VITE_LOCAL_API_URL ?? "http://127.0.0.1:8008";
 
-  let folderInput: string = "~/Desktop";
   let indexing = false;
   let statusLine = "Checking status…";
   let lastIndexedLabel = "";
   let currentJobId: string | null = null;
-  let showAdvancedPath = false;
+
+  // Multi-folder state
+  type DetectedFolder = { path: string; count: number; accessible: boolean; selected: boolean };
+  let detectedFolders: DetectedFolder[] = [];
+  let customFolder = "";
+  let showCustomFolder = false;
+  let permissionWarning = "";
+  let modelStatus = "";
+
+  // Post-index suggestions
+  let suggestedQueries: { query: string; confidence: number }[] = [];
+  let showSuggestions = false;
+  let artSearchRef: ArtSearch | null = null;
 
   // Commercial UX principle:
   // - The app surface is for search/browse.
   // - Library/indexing controls live behind an explicit "Library" modal.
   let showLibrary = false;
 
+  function apiBase(): string {
+    return LOCAL_API_URL.endsWith("/") ? LOCAL_API_URL.slice(0, -1) : LOCAL_API_URL;
+  }
+
   async function refreshStatus() {
     try {
-      const base = LOCAL_API_URL.endsWith("/") ? LOCAL_API_URL.slice(0, -1) : LOCAL_API_URL;
-      const resp = await fetch(base + "/status");
+      const resp = await fetch(apiBase() + "/status");
       const data = await resp.json();
       if (!data?.indexed) {
         statusLine = "Not indexed yet";
@@ -46,18 +60,56 @@
       } else {
         lastIndexedLabel = "";
       }
-      if (data.root) folderInput = data.root;
     } catch {
       statusLine = "Local engine not running (start API server on :8008)";
     }
   }
 
-  async function pickFolder() {
-    const base = LOCAL_API_URL.endsWith("/") ? LOCAL_API_URL.slice(0, -1) : LOCAL_API_URL;
+  async function detectFolders() {
     try {
-      const resp = await fetch(base + "/pick-folder", { method: "POST" });
+      const resp = await fetch(apiBase() + "/detect-folders");
       const data = await resp.json();
-      if (data?.ok && data?.path) folderInput = data.path;
+      detectedFolders = (data?.folders ?? []).map((f: any) => ({
+        ...f,
+        selected: f.accessible && f.count > 0,
+      }));
+      const denied = detectedFolders.filter(f => !f.accessible);
+      if (denied.length > 0) {
+        permissionWarning = "Some folders need Full Disk Access permission in System Preferences.";
+      }
+    } catch {
+      detectedFolders = [];
+    }
+  }
+
+  async function warmModel() {
+    try {
+      const ws = await fetch(apiBase() + "/warm-status");
+      const data = await ws.json();
+      if (data.status === "ready") {
+        modelStatus = "";
+        return;
+      }
+      modelStatus = data.status === "downloading" ? "Downloading AI model (577 MB)..." : "Loading AI model...";
+      // Fire warm in background
+      fetch(apiBase() + "/warm", { method: "POST" }).then(() => {
+        modelStatus = "";
+      }).catch(() => {
+        modelStatus = "";
+      });
+    } catch {
+      modelStatus = "";
+    }
+  }
+
+  async function pickFolder() {
+    try {
+      const resp = await fetch(apiBase() + "/pick-folder", { method: "POST" });
+      const data = await resp.json();
+      if (data?.ok && data?.path) {
+        customFolder = data.path;
+        showCustomFolder = true;
+      }
     } catch (e) {
       console.error(e);
     }
@@ -65,9 +117,8 @@
 
   async function cancelIndex() {
     if (!currentJobId) return;
-    const base = LOCAL_API_URL.endsWith("/") ? LOCAL_API_URL.slice(0, -1) : LOCAL_API_URL;
     try {
-      await fetch(base + `/jobs/${currentJobId}/cancel`, { method: "POST" });
+      await fetch(apiBase() + `/jobs/${currentJobId}/cancel`, { method: "POST" });
       statusLine = "Cancelling…";
     } catch (e) {
       console.error(e);
@@ -76,12 +127,11 @@
 
   async function runIndex(payload: any) {
     indexing = true;
+    showSuggestions = false;
     statusLine = payload?.recent_only ? "Building your personal demo…" : "Starting index…";
 
-    const base = LOCAL_API_URL.endsWith("/") ? LOCAL_API_URL.slice(0, -1) : LOCAL_API_URL;
-
     try {
-      const resp = await fetch(base + "/index", {
+      const resp = await fetch(apiBase() + "/index", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),
@@ -93,7 +143,7 @@
       currentJobId = jobId;
 
       while (true) {
-        const j = await (await fetch(base + `/jobs/${jobId}`)).json();
+        const j = await (await fetch(apiBase() + `/jobs/${jobId}`)).json();
         if (j.total) {
           statusLine = `${payload?.recent_only ? "Building personal demo" : "Indexing"}… ${j.processed}/${j.total}`;
         } else {
@@ -105,7 +155,7 @@
           if (!payload?.recent_only && msg.includes("+0 new") && msg.includes("~0 updated") && msg.includes("-0 removed")) {
             statusLine = "Index up to date";
           } else {
-            statusLine = payload?.recent_only ? "Personal demo ready" : "Index updated";
+            statusLine = payload?.recent_only ? "Personal demo ready!" : "Index updated";
           }
           break;
         }
@@ -114,6 +164,10 @@
 
         await new Promise((r) => setTimeout(r, 600));
       }
+
+      // Post-index: fetch suggested queries
+      await fetchSuggestions();
+
     } catch (e) {
       statusLine = payload?.recent_only ? "Personal demo failed" : "Index failed";
       console.error(e);
@@ -122,6 +176,55 @@
       currentJobId = null;
       await refreshStatus();
     }
+  }
+
+  async function fetchSuggestions() {
+    try {
+      const resp = await fetch(apiBase() + "/suggest-queries", { method: "POST" });
+      const data = await resp.json();
+      suggestedQueries = data?.suggestions ?? [];
+      if (suggestedQueries.length > 0) {
+        showSuggestions = true;
+      }
+    } catch {
+      suggestedQueries = [];
+    }
+  }
+
+  function trySuggestion(query: string) {
+    showLibrary = false;
+    showSuggestions = false;
+    // Dispatch query to ArtSearch via hash trick
+    window.dispatchEvent(new CustomEvent("merlian-search", { detail: query }));
+  }
+
+  function startPersonalDemo() {
+    const selectedPaths = detectedFolders.filter(f => f.selected).map(f => f.path);
+    if (showCustomFolder && customFolder) {
+      selectedPaths.push(customFolder);
+    }
+    if (selectedPaths.length === 0) return;
+    runIndex({
+      folders: selectedPaths,
+      ocr: true,
+      device: "auto",
+      recent_only: true,
+      max_items: 200,
+    });
+  }
+
+  function startFullIndex() {
+    const selectedPaths = detectedFolders.filter(f => f.selected).map(f => f.path);
+    if (showCustomFolder && customFolder) {
+      selectedPaths.push(customFolder);
+    }
+    if (selectedPaths.length === 0) return;
+    runIndex({
+      folders: selectedPaths,
+      ocr: true,
+      device: "auto",
+      recent_only: false,
+    });
   }
 
   function parseMode(): SearchMode {
@@ -135,6 +238,12 @@
     mode = parseMode();
   });
 
+  // On Library open: detect folders + warm model
+  $: if (showLibrary) {
+    detectFolders();
+    warmModel();
+  }
+
   refreshStatus();
 </script>
 
@@ -144,16 +253,11 @@
   <div class="fixed z-50 top-0 left-0 right-0 px-4 py-2 text-xs sm:text-sm bg-white/80 backdrop-blur border-b border-neutral-200">
     <div class="max-w-3xl mx-auto text-neutral-700 flex items-center justify-between gap-4">
       <div class="truncate">
-        <span class="font-medium">Merlian demo gallery</span> — Harvard Art Museums dataset.
+        <span class="font-medium">Merlian demo</span> — curated screenshot gallery.
       </div>
 
       <div class="flex items-center gap-4">
-        <a class="underline underline-offset-2" href="#/local">Local app</a>
-        <a
-          class="shrink-0 text-neutral-500 hover:text-neutral-900 underline underline-offset-2"
-          target="_blank"
-          rel="noopener noreferrer"
-          href="https://github.com/romanI04/merlian/blob/main/CREDITS.md">Credits</a>
+        <a class="underline underline-offset-2" href="#/local">Search my library</a>
       </div>
     </div>
   </div>
@@ -161,7 +265,7 @@
   <div class="fixed z-50 top-0 left-0 right-0 px-4 py-2 text-xs sm:text-sm bg-white/80 backdrop-blur border-b border-neutral-200">
     <div class="max-w-3xl mx-auto text-neutral-700 flex items-center justify-between gap-4">
       <div class="truncate">
-        <span class="font-medium">Merlian</span> — local screenshot search.
+        <span class="font-medium">Merlian</span> — your screenshots, searchable.
       </div>
 
       <div class="flex items-center gap-4">
@@ -173,9 +277,9 @@
 {/if}
 
 <!-- Main app surface: search/browse only -->
-<ArtSearch {mode} />
+<ArtSearch {mode} bind:this={artSearchRef} />
 
-<!-- Library modal: indexing / personal demo setup lives here (not on the landing/app surface) -->
+<!-- Library modal: indexing / personal demo setup -->
 {#if mode === "local" && showLibrary}
   <div class="fixed z-[60] inset-0 bg-black/30" on:click={() => (showLibrary = false)} />
   <div class="fixed z-[70] top-16 left-0 right-0 px-4" aria-modal="true" role="dialog">
@@ -187,6 +291,9 @@
           {#if lastIndexedLabel}
             <div class="text-[11px] text-neutral-500 mt-1">{lastIndexedLabel}</div>
           {/if}
+          {#if modelStatus}
+            <div class="text-[11px] text-blue-600 mt-1">{modelStatus}</div>
+          {/if}
         </div>
         <button class="px-3 py-1.5 rounded-lg bg-white border border-neutral-200 hover:bg-neutral-50" on:click={() => (showLibrary = false)}>
           Close
@@ -194,39 +301,69 @@
       </div>
 
       <div class="mt-4 grid gap-3">
-        <div>
-          <div class="text-[11px] text-neutral-500 mb-1">Selected folder</div>
-          <div class="px-3 py-2 rounded-lg border border-neutral-200 bg-white/80 font-mono text-xs break-all">{folderInput}</div>
+        <!-- Multi-folder checkboxes -->
+        {#if detectedFolders.length > 0}
+          <div>
+            <div class="text-[11px] text-neutral-500 mb-2">Select folders to index</div>
+            {#each detectedFolders as folder}
+              <label class="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-neutral-50 cursor-pointer {!folder.accessible ? 'opacity-50' : ''}">
+                <input
+                  type="checkbox"
+                  bind:checked={folder.selected}
+                  disabled={!folder.accessible || indexing}
+                  class="rounded border-neutral-300"
+                />
+                <span class="font-mono text-xs flex-1 break-all">{folder.path}</span>
+                <span class="text-[11px] text-neutral-400">
+                  {#if !folder.accessible}
+                    <span class="text-red-500">no access</span>
+                  {:else}
+                    {folder.count} images
+                  {/if}
+                </span>
+              </label>
+            {/each}
+          </div>
+        {/if}
 
-          {#if showAdvancedPath}
+        {#if permissionWarning}
+          <div class="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2 border border-amber-200">
+            {permissionWarning}
+          </div>
+        {/if}
+
+        {#if showCustomFolder}
+          <div>
+            <div class="text-[11px] text-neutral-500 mb-1">Custom folder</div>
             <input
-              class="mt-2 w-full px-3 py-2 rounded-lg border border-neutral-200 bg-white focus:outline-none focus:ring-2 focus:ring-black/10"
-              bind:value={folderInput}
-              placeholder="/Users/romanimanov/Desktop" />
-          {/if}
-        </div>
+              class="w-full px-3 py-2 rounded-lg border border-neutral-200 bg-white focus:outline-none focus:ring-2 focus:ring-black/10 font-mono text-xs"
+              bind:value={customFolder}
+              placeholder="/path/to/folder"
+            />
+          </div>
+        {/if}
 
         <div class="flex flex-wrap gap-2">
           <button class="px-4 py-2 rounded-lg bg-white border border-neutral-200 hover:bg-neutral-100" on:click={pickFolder} disabled={indexing}>
-            Choose…
+            Add folder…
           </button>
-          <button class="px-3 py-2 rounded-lg bg-white border border-neutral-200 hover:bg-neutral-100" on:click={() => (showAdvancedPath = !showAdvancedPath)}>
-            {showAdvancedPath ? "Hide" : "Edit"}
-          </button>
+          {#if !showCustomFolder}
+            <button class="px-3 py-2 rounded-lg bg-white border border-neutral-200 hover:bg-neutral-100" on:click={() => (showCustomFolder = true)}>
+              Custom path
+            </button>
+          {/if}
           <button
             class="px-4 py-2 rounded-lg bg-neutral-900 text-white hover:bg-neutral-700 disabled:opacity-50"
-            on:click={() =>
-              runIndex({ folder: folderInput, ocr: true, device: "auto", recent_only: false })}
-            disabled={indexing}>
-            {indexing ? "Indexing…" : "Index"}
+            on:click={startPersonalDemo}
+            disabled={indexing || detectedFolders.filter(f => f.selected).length === 0}
+            title="Index last 200 screenshots (fast) so you can try search immediately">
+            {indexing ? "Building…" : "Build personal demo"}
           </button>
           <button
             class="px-4 py-2 rounded-lg bg-white border border-neutral-200 hover:bg-neutral-100 disabled:opacity-50"
-            on:click={() =>
-              runIndex({ folder: folderInput, ocr: true, device: "auto", recent_only: true, max_items: 200 })}
-            disabled={indexing}
-            title="Indexes a small recent sample (fast) so you can try search immediately">
-            Build personal demo
+            on:click={startFullIndex}
+            disabled={indexing || detectedFolders.filter(f => f.selected).length === 0}>
+            Full index
           </button>
           {#if indexing}
             <button class="px-4 py-2 rounded-lg bg-white border border-neutral-200 hover:bg-neutral-100" on:click={cancelIndex}>
@@ -235,14 +372,25 @@
           {/if}
         </div>
 
-        <div class="flex flex-wrap gap-2 text-xs">
-          <button class="px-2 py-1 rounded-md bg-neutral-100 hover:bg-neutral-200" on:click={() => (folderInput = "~/Desktop")}>Desktop</button>
-          <button class="px-2 py-1 rounded-md bg-neutral-100 hover:bg-neutral-200" on:click={() => (folderInput = "~/Downloads")}>Downloads</button>
-          <button class="px-2 py-1 rounded-md bg-neutral-100 hover:bg-neutral-200" on:click={() => (folderInput = "~/Pictures")}>Pictures</button>
-        </div>
+        <!-- Post-index suggested queries -->
+        {#if showSuggestions && suggestedQueries.length > 0}
+          <div class="mt-2 p-3 bg-green-50 rounded-lg border border-green-200">
+            <div class="text-xs font-medium text-green-800 mb-2">Your library looks great! Try searching:</div>
+            <div class="flex flex-wrap gap-2">
+              {#each suggestedQueries as sq}
+                <button
+                  class="px-3 py-1.5 rounded-full bg-white border border-green-300 hover:bg-green-100 text-sm text-green-800"
+                  on:click={() => trySuggestion(sq.query)}
+                >
+                  {sq.query}
+                </button>
+              {/each}
+            </div>
+          </div>
+        {/if}
 
         <p class="text-[11px] text-neutral-500">
-          Tip: after indexing, try searches like <span class="font-medium">"error"</span>, <span class="font-medium">"receipt total"</span>, <span class="font-medium">"confirmation code"</span>.
+          100% local. Nothing leaves your machine. Your files are never uploaded.
         </p>
       </div>
     </div>

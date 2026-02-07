@@ -28,6 +28,7 @@ from tqdm import tqdm
 import sys
 import subprocess
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 console = Console()
 
@@ -42,9 +43,28 @@ class DbPaths:
     meta: Path
 
 
-def app_dir() -> Path:
-    # Keep local to repo for now, to avoid polluting user machine.
+def _legacy_app_dir() -> Path:
+    """Old repo-local data directory (pre-v0.2)."""
     return Path(__file__).resolve().parent / ".merlian"
+
+
+def app_dir() -> Path:
+    if sys.platform == "darwin":
+        d = Path.home() / "Library" / "Application Support" / "Merlian"
+    else:
+        d = Path.home() / ".merlian"
+    d.mkdir(parents=True, exist_ok=True)
+
+    # Auto-migrate from old repo-local directory if it exists.
+    old = _legacy_app_dir()
+    if old.is_dir() and any(old.iterdir()):
+        # Only migrate if new dir is empty (first run after upgrade).
+        if not any(d.iterdir()):
+            import shutil
+            for item in old.iterdir():
+                shutil.move(str(item), str(d / item.name))
+
+    return d
 
 
 def get_dbpaths() -> DbPaths:
@@ -296,6 +316,7 @@ def cli():
 @click.argument(
     "folder",
     required=False,
+    nargs=-1,
     type=click.Path(exists=True, file_okay=False, path_type=Path),
 )
 @click.option(
@@ -322,23 +343,26 @@ def cli():
     default=None,
     help="Cap the number of images indexed (pairs well with --recent-only).",
 )
-def index(folder: Path | None, device: str, ocr: bool, recent_only: bool, max_items: int | None):
-    """Index images under FOLDER (or the last indexed folder)."""
+def index(folder: tuple[Path, ...], device: str, ocr: bool, recent_only: bool, max_items: int | None):
+    """Index images under FOLDER(s) (or the last indexed folders)."""
 
     paths = get_dbpaths()
     paths.root.mkdir(parents=True, exist_ok=True)
 
-    # Allow running `merlian index` with no folder by reusing the last one.
-    if folder is None:
+    folders: list[Path] = list(folder)
+
+    # Allow running `merlian index` with no folder by reusing the last ones.
+    if not folders:
         if paths.meta.exists():
             try:
                 meta_prev = json.loads(paths.meta.read_text())
-                prev_root = meta_prev.get("root")
-                if prev_root:
-                    folder = Path(prev_root)
+                prev_roots = meta_prev.get("roots", [])
+                if not prev_roots and meta_prev.get("root"):
+                    prev_roots = [meta_prev["root"]]
+                folders = [Path(r) for r in prev_roots]
             except Exception:
                 pass
-        if folder is None:
+        if not folders:
             raise click.ClickException("No folder provided and no previous index found.")
 
     conn = sqlite3.connect(paths.db)
@@ -347,29 +371,32 @@ def index(folder: Path | None, device: str, ocr: bool, recent_only: bool, max_it
     if device == "auto":
         device = "mps" if torch.backends.mps.is_available() else "cpu"
 
+    roots_str = ", ".join(str(f) for f in folders)
     console.print(
-        f"[bold]Indexing[/bold] {folder}  ([dim]{device}[/dim], ocr={'on' if ocr else 'off'})"
+        f"[bold]Indexing[/bold] {roots_str}  ([dim]{device}[/dim], ocr={'on' if ocr else 'off'})"
     )
     model_name, pretrained, model, preprocess, tokenizer = load_model(device=device)
 
-    # Incremental indexing (single-folder MVP):
+    # Incremental indexing (multi-folder):
     # - skip unchanged files
     # - update changed files in-place
     # - append new files
     # - drop deleted files
 
-    meta = {"model": {"name": model_name, "pretrained": pretrained}, "paths": [], "root": str(folder)}
+    meta = {"model": {"name": model_name, "pretrained": pretrained}, "paths": [], "roots": [str(f) for f in folders]}
     embs_existing = load_embeddings(paths.embeddings)
 
     if paths.meta.exists() and embs_existing is not None:
         try:
             meta = json.loads(paths.meta.read_text())
         except Exception:
-            meta = {"model": {"name": model_name, "pretrained": pretrained}, "paths": [], "root": str(folder)}
+            meta = {"model": {"name": model_name, "pretrained": pretrained}, "paths": [], "roots": [str(f) for f in folders]}
 
     meta.setdefault("model", {"name": model_name, "pretrained": pretrained})
     meta["model"] = {"name": model_name, "pretrained": pretrained}
-    meta["root"] = str(folder)
+    meta["roots"] = [str(f) for f in folders]
+    # Keep legacy "root" for backwards compat
+    meta["root"] = str(folders[0]) if folders else ""
 
     paths_list: List[str] = list(meta.get("paths", []))
     if embs_existing is None or len(paths_list) != embs_existing.shape[0]:
@@ -380,14 +407,30 @@ def index(folder: Path | None, device: str, ocr: bool, recent_only: bool, max_it
     seen: set[str] = set()
     path_to_idx = {p: i for i, p in enumerate(paths_list)}
 
-    images = list(iter_images(folder))
+    # Pre-flight: count images before committing to full index.
+    # Collect from all folders.
+    all_images: list[Path] = []
+    for f in folders:
+        all_images.extend(iter_images(f))
+    image_count = len(all_images)
+
+    if image_count == 0:
+        raise click.ClickException(f"No supported images found in {roots_str}")
+
+    if max_items is None and image_count > 5000:
+        console.print(
+            f"[yellow]Warning:[/yellow] Found {image_count} images. "
+            f"Consider using --max-items to cap the first index (e.g. --max-items 1000 --recent-only)."
+        )
+
     if recent_only:
-        images.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+        all_images.sort(key=lambda p: p.stat().st_mtime, reverse=True)
     if max_items is not None and max_items > 0:
-        images = images[:max_items]
+        all_images = all_images[:max_items]
+
+    images = all_images
 
     use_tqdm = sys.stderr.isatty()
-    iterator = tqdm(images, desc="images") if use_tqdm else images
 
     # Work on a mutable embeddings store.
     if embs_existing is None:
@@ -399,15 +442,12 @@ def index(folder: Path | None, device: str, ocr: bool, recent_only: bool, max_it
     updated = 0
     skipped = 0
 
-    for i, p in enumerate(iterator, start=1):
-        if not use_tqdm and i % 25 == 0:
-            console.print(f"… processed {i}/{len(images)}")
-
+    # Determine which images need processing (skip unchanged).
+    to_process: List[Tuple[Path, float, int]] = []
+    for p in images:
         p_str = str(p)
         seen.add(p_str)
         mtime, size = get_file_stats(p)
-
-        # Skip unchanged if we have it indexed.
         row = conn.execute(
             "SELECT mtime, size_bytes FROM assets WHERE path=?",
             (p_str,),
@@ -416,55 +456,93 @@ def index(folder: Path | None, device: str, ocr: bool, recent_only: bool, max_it
             if float(row[0]) == float(mtime) and int(row[1]) == int(size):
                 skipped += 1
                 continue
+        to_process.append((p, mtime, size))
 
+    console.print(f"[dim]Skipped {skipped} unchanged, processing {len(to_process)} images…[/dim]")
+
+    def _process_one(p: Path, do_ocr: bool) -> Optional[dict]:
+        """Compute embedding + OCR for one image (thread-safe)."""
         vec = image_embedding(model, preprocess, device, p)
         if vec is None:
-            continue
-
+            return None
         w, h = get_image_size(p)
-        now = datetime.now(timezone.utc).isoformat()
-
-        ocr_txt = ocr_text_apple_vision(p) if ocr else ""
-
+        ocr_txt = ocr_text_apple_vision(p) if do_ocr else ""
         knd = guess_kind(p, w, h)
         txty = textiness_from_ocr(ocr_txt)
-        q = quality_score(p, w, h, size)
+        qs = quality_score(p, w, h, p.stat().st_size)
         dg = ahash64(p)
+        return {"vec": vec, "w": w, "h": h, "ocr_txt": ocr_txt, "kind": knd, "textiness": txty, "quality_score": qs, "dup_group": dg}
 
-        conn.execute(
-            """
-            INSERT INTO assets(path, mtime, size_bytes, width, height, kind, textiness, quality_score, dup_group, ocr_text, indexed_at)
-            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(path) DO UPDATE SET
-              mtime=excluded.mtime,
-              size_bytes=excluded.size_bytes,
-              width=excluded.width,
-              height=excluded.height,
-              kind=excluded.kind,
-              textiness=excluded.textiness,
-              quality_score=excluded.quality_score,
-              dup_group=excluded.dup_group,
-              ocr_text=excluded.ocr_text,
-              indexed_at=excluded.indexed_at
-            """,
-            (p_str, mtime, size, w, h, knd, txty, q, dg, ocr_txt, now),
-        )
+    # Parallel indexing: CLIP + OCR in threads, DB writes on main thread.
+    n_workers = min(4, max(1, len(to_process)))
+    processed_count = 0
+    total_count = len(to_process)
 
-        # Update OCR full-text index.
-        conn.execute("DELETE FROM ocr_fts WHERE path=?", (p_str,))
-        if ocr_txt:
+    iterator = tqdm(total=total_count, desc="indexing") if use_tqdm else None
+
+    with ThreadPoolExecutor(max_workers=n_workers) as executor:
+        future_to_info = {}
+        for p, mt, sz in to_process:
+            fut = executor.submit(_process_one, p, ocr)
+            future_to_info[fut] = (p, mt, sz)
+
+        for fut in as_completed(future_to_info):
+            p, mtime, size = future_to_info[fut]
+            p_str = str(p)
+            processed_count += 1
+
+            if iterator:
+                iterator.update(1)
+            elif processed_count % 25 == 0:
+                console.print(f"… processed {processed_count}/{total_count}")
+
+            result = fut.result()
+            if result is None:
+                continue
+
+            vec = result["vec"]
+            w, h = result["w"], result["h"]
+            ocr_txt = result["ocr_txt"]
+            now = datetime.now(timezone.utc).isoformat()
+
             conn.execute(
-                "INSERT INTO ocr_fts(path, ocr_text) VALUES(?, ?)", (p_str, ocr_txt)
+                """
+                INSERT INTO assets(path, mtime, size_bytes, width, height, kind, textiness, quality_score, dup_group, ocr_text, indexed_at)
+                VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(path) DO UPDATE SET
+                  mtime=excluded.mtime,
+                  size_bytes=excluded.size_bytes,
+                  width=excluded.width,
+                  height=excluded.height,
+                  kind=excluded.kind,
+                  textiness=excluded.textiness,
+                  quality_score=excluded.quality_score,
+                  dup_group=excluded.dup_group,
+                  ocr_text=excluded.ocr_text,
+                  indexed_at=excluded.indexed_at
+                """,
+                (p_str, mtime, size, w, h, result["kind"], result["textiness"],
+                 result["quality_score"], result["dup_group"], ocr_txt, now),
             )
 
-        if p_str in path_to_idx:
-            vecs[path_to_idx[p_str]] = vec
-            updated += 1
-        else:
-            path_to_idx[p_str] = len(paths_list)
-            paths_list.append(p_str)
-            vecs.append(vec)
-            added += 1
+            # Update OCR full-text index.
+            conn.execute("DELETE FROM ocr_fts WHERE path=?", (p_str,))
+            if ocr_txt:
+                conn.execute(
+                    "INSERT INTO ocr_fts(path, ocr_text) VALUES(?, ?)", (p_str, ocr_txt)
+                )
+
+            if p_str in path_to_idx:
+                vecs[path_to_idx[p_str]] = vec
+                updated += 1
+            else:
+                path_to_idx[p_str] = len(paths_list)
+                paths_list.append(p_str)
+                vecs.append(vec)
+                added += 1
+
+    if iterator:
+        iterator.close()
 
     # Drop paths that no longer exist under folder.
     removed = 0

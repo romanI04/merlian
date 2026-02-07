@@ -1,72 +1,55 @@
 # STATUS — Merlian
 
 ## Product intent (commercial)
-Build a **local-first “visual memory” app** that makes people say: *“Holy shit — it found the exact screenshot/image I meant.”*  
+Build a **local-first "visual memory" app** that makes people say: *"Holy shit — it found the exact screenshot/image I meant."*
 Primary wedge: **screenshots + downloaded images** (high volume, high pain). Privacy-first by default.
 
 ## Current state (what works today)
-- **UI** (Svelte forked from Dispict) supports:
-  - Demo gallery (`#/demo`) and Local mode (`#/local`) via hash routing
-  - Folder selection + local onboarding polish
-  - Search UI w/ **OCR previews**
-- **Engine** (`engine/`, Python) supports:
-  - CLI: `merlian.py index/search/status/reset`
-  - Local API (FastAPI/uvicorn on **8008**): `/health`, `/status`, `/index`, `/search`
-  - Background indexing jobs + progress + cancel
-  - Hybrid retrieval (CLIP + OCR) and OCR-only mode
-  - Model caching + warm endpoint
-- **Security**: file/asset endpoints are restricted to **localhost + indexed paths**.
 
-## What’s missing (commercial “wow” blockers)
-- Onboarding contract is still weak: user doesn’t immediately understand *why this is better than Spotlight/Finder*.
-- Reliability: unclear success rate on real screenshot libraries; quality needs a measurable bar.
-- Packaging/distribution: still dev-mode (Python env + npm). No “download → works.”
-- Differentiation beyond Harvard art demo: need a repeatable, everyday wedge.
+### Engine (`engine/`, Python)
+- CLI: `merlian.py index/search/status/reset`
+- Multi-folder indexing (pass multiple folders)
+- Parallel CLIP+OCR indexing via ThreadPoolExecutor
+- Pre-flight library size check (warns >5K images)
+- Quality signals: textiness, quality_score, dup_group, recency — all active in search ranking
+- Deduplication via perceptual hash (dup_group)
+- Data stored at `~/Library/Application Support/Merlian/` (auto-migrated from old location)
+- FastAPI server: `/health`, `/status`, `/index`, `/search`, `/warm`, `/warm-status`
+- Smart folder detection: `/detect-folders`, `/check-permissions`
+- Post-index suggestions: `/suggest-queries`
+- Static frontend serving when `MERLIAN_SERVE_FRONTEND=1`
+- Security: file/asset endpoints restricted to localhost + indexed paths
 
-## Single next highest-leverage step
-Define and ship a **“Wow Test” onboarding flow** that proves value in < 60 seconds on the user’s own machine:
-1) default-select **~/Desktop & ~/Pictures/Screenshots (or user picks)**
-2) index a small sample quickly (e.g., last 200 screenshots)
-3) run 3 guided queries (chips) that usually hit (e.g., “error”, “receipt”, “calendar”, “confirmation”, “chart”)
-4) show an undeniable result + instant open/reveal.
+### UI (Svelte, forked from Dispict)
+- Welcome overlay: "Every screenshot you've ever taken. Findable in seconds."
+- Demo gallery (`#/demo`) and Local mode (`#/local`) via hash routing
+- Multi-folder Library modal with auto-detection + permission warnings
+- "Build personal demo" (200 recent screenshots, fast)
+- Post-index suggested queries with clickable chips
+- Dark sidebar (stone-900) for local mode with rich metadata:
+  - File creation date, size, dimensions, folder, OCR word count
+  - OCR text with query-term highlighting (XSS-safe)
+- 20+ starter prompts per mode (screenshot-focused)
+- Model warm-up fires when Library modal opens
 
-This gives us a concrete target to optimize retrieval + UX around.
+### DevOps
+- `run-local.sh` with `--dev` / `--prod` flags + auto port discovery
+- `install.sh` — one-command installer for macOS
+- Claude commands: `/merlian`, `/demo`, `/ship`, `/landing`, `/fix`
 
-## Plan (next 2 weeks)
-### Week 1 — Define the wedge + make the wow reproducible
-- Pick ICP: “heavy screenshot takers” (devs, PMs, students, ops).
-- Implement the Wow Test flow + telemetry (local-only):
-  - time-to-first-result, % queries with a click, top failure reasons
-- Retrieval quality pass:
-  - ensure OCR indexing for screenshots is on by default
-  - tune ranking weights (CLIP vs OCR) and add simple heuristics (e.g., prefer recent screenshots)
-
-### Week 2 — Packaging + trust
-- Produce a single-command local run (already partially present via `run-local.sh`) → make it robust.
-- Decide desktop wrapper direction:
-  - MVP: keep browser UI + local engine
-  - Next: Tauri shell w/ spotlight hotkey + background indexing
-- Add trust surfaces:
-  - “Nothing leaves your machine” banner + clear data locations
-  - permissions help (macOS Files & Folders / Full Disk Access)
-
-## Active risks / questions
-- macOS permissions friction (Desktop/Screenshots access).
-- OCR speed/quality tradeoffs on large libraries.
-- Packaging Python + model weights without huge downloads.
+## What's needed for user testing
+- Phase 4: Curated screenshot demo dataset (synthetic, replaces Harvard art)
+- Phase 8: Deploy web demo (Vercel + Modal), share installer, feedback collection
+- README.md rewrite for public repo
 
 ## How to run (dev)
-UI:
 ```bash
-cd ui
-npm install
-npm run dev -- --host 127.0.0.1 --port 5173
+./run-local.sh          # Dev mode (Vite HMR + API)
+./run-local.sh --prod   # Production mode (single port)
 ```
-Engine:
+
+Or manually:
 ```bash
-cd engine
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn server:app --port 8008
+cd engine && source .venv/bin/activate && uvicorn server:app --port 8008
+cd dispict && npm run dev -- --host 127.0.0.1 --port 5173
 ```

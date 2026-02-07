@@ -19,24 +19,48 @@
 
   const LOCAL_STARTER_INPUTS = [
     "error 403",
-    "invoice total",
-    "meeting notes",
-    "dark mode dashboard",
-    "code editor",
-    "google docs",
-    "calendar screenshot",
-    "map route",
+    "receipt total",
+    "confirmation code",
+    "npm install failed",
+    "meeting invite",
+    "dashboard chart",
+    "Python traceback",
+    "Slack message",
+    "google maps",
+    "settings page",
+    "terminal output",
+    "booking confirmation",
+    "invoice pdf",
+    "2FA code",
+    "calendar event",
+    "code review",
+    "deploy failed",
+    "payment confirmation",
+    "wifi password",
+    "shipping tracking",
   ];
 
   const DEMO_STARTER_INPUTS = [
-    "bauhaus letterhead",
-    "minimalist black logo",
-    "abstract painting",
-    "portrait with red",
-    "architectural blueprint",
-    "typography poster",
-    "still life with fruit",
-    "ink drawing",
+    "error message",
+    "receipt total",
+    "confirmation code",
+    "npm install failed",
+    "dashboard chart",
+    "Python traceback",
+    "Slack conversation",
+    "terminal output",
+    "booking confirmation",
+    "2FA code",
+    "calendar event",
+    "code diff",
+    "deploy failed",
+    "payment confirmation",
+    "analytics dashboard",
+    "email inbox",
+    "system settings",
+    "google maps route",
+    "order confirmation",
+    "API response",
   ];
 
   function starterInputs(): string[] {
@@ -55,7 +79,19 @@
 
   // Force an instant "wow" query on load for demo gallery.
   onMount(() => {
-    if (mode === "demo") query = "bauhaus letterhead";
+    if (mode === "demo") query = "error message";
+  });
+
+  // Listen for search queries dispatched from App (e.g. suggestion chips)
+  onMount(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (typeof detail === "string") {
+        query = detail;
+      }
+    };
+    window.addEventListener("merlian-search", handler);
+    return () => window.removeEventListener("merlian-search", handler);
   });
 
   let frame: HTMLDivElement;
@@ -239,10 +275,10 @@
 
 {#if selected}
   <aside
-    class="absolute z-20 inset-y-0 right-0 bg-white/90 backdrop-blur border-l border-neutral-200 shadow-xl overflow-y-auto"
+    class="absolute z-20 inset-y-0 right-0 backdrop-blur border-l shadow-xl overflow-y-auto {mode === 'local' ? 'bg-stone-900/95 border-stone-700' : 'bg-white/90 border-neutral-200'}"
     style:width="calc(min(100vw, {SIDEBAR_WIDTH}px))"
     transition:fly={{ x: SIDEBAR_WIDTH, y: 0, duration: 300, easing: cubicOut }}
   >
-    <Sidebar artwork={selected} on:close={() => (selected = null)} />
+    <Sidebar artwork={selected} {query} on:close={() => (selected = null)} />
   </aside>
 {/if}
