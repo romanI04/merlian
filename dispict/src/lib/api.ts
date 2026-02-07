@@ -161,9 +161,81 @@ export async function loadSuggestions(
     });
   }
 
-  // Upstream Dispict demo API
-  let url = demoBase() + "?text=" + encodeURIComponent(text);
-  if (n) url += "&n=" + n;
-  const resp = await fetch(url, { signal });
-  return await resp.json();
+  // Demo mode — use local engine's demo-search endpoint (pre-computed demo dataset)
+  const demoApiBase = localBase();
+  const resp = await fetch(demoApiBase + "/demo-search", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ query: text, k: n ?? 64, mode: "hybrid" }),
+    signal,
+  });
+
+  if (!resp.ok) {
+    // Fallback: try upstream Dispict demo API
+    let url = demoBase() + "?text=" + encodeURIComponent(text);
+    if (n) url += "&n=" + n;
+    const fallbackResp = await fetch(url, { signal });
+    return await fallbackResp.json();
+  }
+
+  const data = await resp.json();
+  const results = (data?.results ?? []) as Array<any>;
+
+  return results.map((r: any, i: number) => {
+    const w = r.width ?? 1440;
+    const h = r.height ?? 900;
+    const path = r.path as string;
+    const filename = path.split("/").slice(-1)[0] ?? path;
+    const ocrText = (r.ocr_preview as string) || "";
+    const ocrWordCount = ocrText.trim() ? ocrText.trim().split(/\s+/).length : 0;
+
+    const artwork: Artwork = {
+      id: i,
+      objectnumber: filename,
+      url: path,
+      image_url:
+        demoApiBase +
+        (r.thumb_url
+          ? r.thumb_url.startsWith("/")
+            ? r.thumb_url
+            : "/" + r.thumb_url
+          : ""),
+
+      dimensions: `${w}×${h}px`,
+      dimheight: h / 200,
+      dimwidth: w / 200,
+
+      title: filename,
+      description: ocrText || null,
+      labeltext: null,
+      people: [],
+      dated: r.created_at ? new Date(r.created_at * 1000).toLocaleDateString() : "",
+      datebegin: 0,
+      dateend: 0,
+      century: null,
+
+      department: "",
+      division: null,
+      culture: null,
+      classification: "Screenshot",
+      technique: null,
+      medium: null,
+
+      accessionyear: null,
+      verificationlevel: 0,
+      totaluniquepageviews: 0,
+      totalpageviews: 0,
+
+      copyright: null,
+      creditline: "",
+
+      matched_tokens: r.matched_tokens ?? [],
+      file_size: r.file_size ?? 0,
+      created_at: r.created_at ?? 0,
+      folder: r.folder ?? "",
+      ocr_word_count: ocrWordCount,
+    };
+
+    return { score: r.score ?? 0, artwork };
+  });
 }

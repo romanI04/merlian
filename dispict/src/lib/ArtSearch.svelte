@@ -207,6 +207,7 @@
       if (!query?.trim()) return;
       results = await loadSuggestions(query, 64, ctrl.signal);
       apiError = null;
+      window.dispatchEvent(new CustomEvent("merlian-search-performed"));
     } catch (error: any) {
       if (!ctrl.signal.aborted) {
         apiError =

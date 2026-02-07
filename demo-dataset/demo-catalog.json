@@ -1,0 +1,442 @@
+[
+  {
+    "path": "receipts/receipt-07.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.0,
+    "quality_score": 0.5876533333333332,
+    "dup_group": "ae7c3c3ffffffffff",
+    "mtime": 1770451682.759345,
+    "ocr_text": ""
+  },
+  {
+    "path": "receipts/receipt-06.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.0,
+    "quality_score": 0.5933165833333333,
+    "dup_group": "ae7c3c3c3ffffffff",
+    "mtime": 1770451682.2097638,
+    "ocr_text": ""
+  },
+  {
+    "path": "receipts/receipt-05.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.15,
+    "quality_score": 0.5930068333333333,
+    "dup_group": "ae7c3c3c3ffffffff",
+    "mtime": 1770451681.6628463,
+    "ocr_text": "FreshBasket Groceries\nJan 24, 2028\nUSB-C Cabl&\n$77.60\nSourdough Bread\nAvocados131\nOrganic Eggs\nAPI Credits\n$36.16\n$88.80\n$11.92\n$88.32\nUSB-C Cab\n$39.79\nTotal\n$322.59\nOrder#9EBDWYFU"
+  },
+  {
+    "path": "receipts/receipt-10.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.10583333333333333,
+    "quality_score": 0.5870428333333333,
+    "dup_group": "ae7c3c3ffffffffff",
+    "mtime": 1770451684.409876,
+    "ocr_text": "GreenLeaf Market\nJan 18, 2028\nLatt&\n$51.89\nChicken Breast\n$35.90\nUSB-C Cab\n$84.92\nOat Milk\n$87.22\nTotal\n$239.93\n(*der \uffffyJSeBFSc"
+  },
+  {
+    "path": "receipts/receipt-04.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.09916666666666667,
+    "quality_score": 0.5856200833333333,
+    "dup_group": "ae7c3c3ffffffffff",
+    "mtime": 1770451681.1047547,
+    "ocr_text": "GreenLeaf Market\nFeb 17, 2028\nUSB-C Cabl&\n$6.28\nAvocados131\nCloud Pro Plan\n$86.01\n$72.87\nTotal\n$145.16\nOrder#DHOTWC1FTr"
+  },
+  {
+    "path": "receipts/receipt-01.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.14666666666666667,
+    "quality_score": 0.5912173333333333,
+    "dup_group": "ae7c3c3c3ffffffff",
+    "mtime": 1770451679.3961957,
+    "ocr_text": "PixelGear Electronics\nApr 27, 2028\nAPI Credits\n$58.93\nCold Brew\n$19.19\nOat Milk\n$24.43\nMonitor Stand\n$29.31\nAPI Credits\n$34.07\nCappuccino\n$18.34\nTotal\n$184.27\n(kder IUUTK5Z1JCX"
+  },
+  {
+    "path": "receipts/receipt-02.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.1225,
+    "quality_score": 0.5885540833333333,
+    "dup_group": "ae7c3c3ffffffffff",
+    "mtime": 1770451679.9744284,
+    "ocr_text": "PixelGear Electronics\nSep 15, 2028\nOat Milk\n$56.04\nMonrtor Stand\n$42.29\nSSL C8rtilicat8\n$49.55\nOrganic Eggs\n$78.42\nTotal\n$226.30\n(*der KtF8LB5M7txJ"
+  },
+  {
+    "path": "receipts/receipt-03.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.11833333333333333,
+    "quality_score": 0.5885045833333332,
+    "dup_group": "ae7c3c3e3ffffffff",
+    "mtime": 1770451680.5379343,
+    "ocr_text": "NovaBrew Coffee\nJul 8, 2028\nCappuccino\n$10.35\nCappuccino\n$70.65\nWireless Mous8\n$88.22\nLatt&\n$18.86\nLatt&\n$34.77\nTotal\n$202.85\nOrder#4ZtNQZ617F"
+  },
+  {
+    "path": "receipts/receipt-08.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.17166666666666666,
+    "quality_score": 0.5933510833333333,
+    "dup_group": "ae7c3c3c3ffffffff",
+    "mtime": 1770451683.3123631,
+    "ocr_text": "PixelGear Electronics\nOct 22, 2028\nWireless Mous8\n$10.71\nCloud Pro Plan\n$72.21\nOrganic Eggs\nOat Milk\n$74.54\n$57.73\nWireless Mous8\n$48.11\nCloud Pro Plan\n$14.86\nCold 8r8W\n$67.31\nTotal\n$345.47\nOrder#U74CAMQV1H"
+  },
+  {
+    "path": "receipts/receipt-09.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.09916666666666667,
+    "quality_score": 0.5860978333333332,
+    "dup_group": "ae7c3c3ffffffffff",
+    "mtime": 1770451683.85278,
+    "ocr_text": "TechHaven Store\nMay 27, 2(Y28\nDomain R&newal\n$43.40\nAvocados131\nAPI Credits\n$4.71\n$59.87\nTotal\n$107.98\nOrder#CQ28L9BZOA"
+  },
+  {
+    "path": "settings/settings-02.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.1325,
+    "quality_score": 0.5910590833333332,
+    "dup_group": "a0c1c3c1c3c000000",
+    "mtime": 1770451689.9612217,
+    "ocr_text": "API Configuration\nENDPOIIITS\nBas8 URL\nhty'.IlapI.cloudr\uffffa.davfv2\nRats limrt\n1000 reqlmin\nTim80Ut\n30 $8cond8\nFEATURES\nEnable webhooks\nDebug mod8\nCache r8spon888"
+  },
+  {
+    "path": "settings/settings-01.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.18333333333333332,
+    "quality_score": 0.5959483333333333,
+    "dup_group": "a0c1c1c1c1c3c0000",
+    "mtime": 1770451689.42134,
+    "ocr_text": "Account Settings\nPROFILE\nDisplay Nam&\n8x Ch8n\nEm\uffff1\n8K@8Kamp18.dev\nTimezone\nPaerf\uffff Tim8 IUTC-81\nNOTIFICATIONS\nEmal notificat\uffffnS\nPush nOtff\uffffatIOnS\nWeekly dig88t\nSECURITY\nTwo-factor authentication\nS88810n tim8OUt\n30 minute8"
+  },
+  {
+    "path": "code/code-02.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.35833333333333334,
+    "quality_score": 0.6101068333333333,
+    "dup_group": "af0f0e0e080000000",
+    "mtime": 1770451675.0275,
+    "ocr_text": "web-app\nindex.tsx\nApp.tsx\napi.t5\nApp.tsx\napi. ts\nstyles.c5s\npackage. json\nnport React. 4 useState. useEffect } from\nnport { fetchData } froTh\nexport default function Appll I\nconst Idata, 5etDatal\nuse5tatelnulll.\nconst Iloading J setLoadingl\nuse5tate(truel.\nU5eEf fect( ( I\nf etchDatal l.thenld\nsetDataldl,\nsetLoadin9lf alsel.\n10\nli\n12\n11:\n13\n14\n15\nif Iloadlngl return <div>Loading.\nreturn <dlv>4data.tltle}</dlv>'\n.<ldlv>'\n16\n17 }"
+  },
+  {
+    "path": "code/code-01.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.36916666666666664,
+    "quality_score": 0.6075965833333332,
+    "dup_group": "af0e0f0e080800000",
+    "mtime": 1770451674.4551287,
+    "ocr_text": "merlian\nsenfer.py\nerlian. py\nsenfer.py\nerlian.py\nscheTha.py\nutils.py\ntests/\nI f rom fa5tapl import FastAPI, HTTPExceptlon\n2 f rom pydantlc import Basemodel\n4 * 1nLtialize the application\napp\nFa5tApIltitle-'Nerlian API'I\nclas5 5earchRequestlBaseModell:\nquery: str\nint\n12\n10\nmode: str\n'hybrid\"\nli\n12 @app. p05t I\"/search\" I\n13 async def searchl req: SearchRequestl:\n14\nresults\nengine. searchl req.queryTr k-req.kl\nreturn {' results\": results}\n15"
+  },
+  {
+    "path": "terminal/deploy-failed.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.25,
+    "quality_score": 0.5937523333333332,
+    "dup_group": "ac0c0e0c000000000",
+    "mtime": 1770451677.7511039,
+    "ocr_text": "-/app S vercel\n-prod\nVer\u00a3el CLI 33.5.1\nDeploying ~/app to production\nUploadlng I\nBuilding.\nError.. Build failed\nCoThmand\n'npm run build\" exited with I\nERROR Type error: Property 'userId' does not exist on type 'session'\n> 14 1 const id\nSession. userId.\nBuild failed. Check the logs above for details."
+  },
+  {
+    "path": "terminal/git-merge-conflict.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.30666666666666664,
+    "quality_score": 0.5975240833333333,
+    "dup_group": "ae0e0000000000000",
+    "mtime": 1770451676.6736794,
+    "ocr_text": "-/repo $ 9lt Therge feature/auth\nAuto-merging src/auth/handler.t5\nCONFLICT Icontentl .. Me rge conf lict in 5rc/auth/handler.ts\nAuto-merging 5rc/conflg.t5\nCONFLICT Icontentl .. Merge conf lict in src/conf ig.t5\nAutomatic merge failed,. fix conflicts and then commit the result.\n-/repo $ 9lt status\nboth rnodif Led:\ns rc/auth/handler. ts\nboth modif led:\nsrclconf ig. ts"
+  },
+  {
+    "path": "terminal/pip-install.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.2841666666666667,
+    "quality_score": 0.5951255833333332,
+    "dup_group": "ae0f0000000000000",
+    "mtime": 1770451678.3014534,
+    "ocr_text": ".venvl $ plp install torch torchvlsion\ntollecting torch\nDownloading torch-2. 5. 1-cp312-cp312-maco5x 14 0 arwh4.whl 163.B MBI\n63.B/63.B MB 12.4 MBI5 eta 0:00'.80\ntollecting torchvision\nDownloading torchvislon-o. 20. l-cp312-cp312-mac05x 14 0 arn64.whl 11.8 MBI\nSuccessfully installed tor\u00a3h-2.5.1 tor\u00a3hvision-0.20. I numpy-2.1. 3 pillow-11.0."
+  },
+  {
+    "path": "terminal/npm-install-fail.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.33666666666666667,
+    "quality_score": 0.5999458333333333,
+    "dup_group": "ac0e0e00000000000",
+    "mtime": 1770451675.5767944,
+    "ocr_text": "-/project $ npm Install\nadded 847 packages in 12s\n-/project $ npm run bulld\nERROR in ./src/iofflponents/Dashboard.t5x\nModule not found.. Error: Can't resolve\n. /chartwidget'\nat /Users/dev/pro ject/s r\u00a3/coThponent51Dashboard.tsx:4: 1\nERROR in ./src/utils/api.t5\nTypeError: Cannot read propertie5 of undef ined I reading ' endpoint, I\nat Ob je\u00a3t.<anonyThous> lapi. ts:22: 151\nwebpack Compiled with 2 errors"
+  },
+  {
+    "path": "terminal/test-output.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.4508333333333333,
+    "quality_score": 0.6088543333333333,
+    "dup_group": "ac0e0e00000000000",
+    "mtime": 1770451678.8483086,
+    "ocr_text": "-/project $ pytest tests/\ntests/te5t auth.py:\ntests/te5t auth.py:\ntests/te5t auth.py:\ntests/te5t api.py:\ntest create user PASSED\ntests/te5t api.py:\ntest delete user PASSED\ntests/te5t api.py:\ntest update user SKIPPED\ntests/te5t search. py:.. test basic search PASSED\nte5ts/te5t search. py:.. test f uzzy_search FAILED\ntest login PASSED\ntest logout PASSED\ntest ref resh token FAILED\nFAILURES\ntest ref resh token\nAssertionError: Expected 200, got 401\nIndexError: list index out of range\ntest f uziy_sear\u00a3h\n6 passed. 2 failed. I skipped in 3.425"
+  },
+  {
+    "path": "terminal/python-traceback.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.3283333333333333,
+    "quality_score": 0.5975990833333332,
+    "dup_group": "ac0e0000000000000",
+    "mtime": 1770451676.1300995,
+    "ocr_text": ".venvl -/app $ python main.py\nTraceback Imost recent call last)..\nFile 'main. py\"\nline 45. <Thodule>\nresult\nprocess datalpayloadl\nFile '/app/core/processor. py\"\nIlne 112. in process data\nvalidated\nschema.validateldatal\nFile '/app/core/schema. py\"\nline 67. in validate\nraise ValidationErrorlf\"Mi55ing required f ield.. '{f ield} }\ncore. schema.ValidationError.' MIssLng required f ield..\nuser id"
+  },
+  {
+    "path": "terminal/docker-build.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.36333333333333334,
+    "quality_score": 0.6069868333333333,
+    "dup_group": "ac0c0c00000000000",
+    "mtime": 1770451677.2235022,
+    "ocr_text": "-/app S docker bulld -t rnyapp:latest\nstep IIB\nFR(M node:2Ptralplne\n-> a8b7c6d5e4f 3\nstep 218\ni\uffffRKDIR /app\nstep 318\nCOPY package*. j 50n\nstep 418\nRill npm ci\nproduction\nnpm warn depre\u00a3ated inf light@1.0.6\nadded 234 packages in 8.4s\nstep 518\ncopy\nstep 618\nRill npm run build\nSuccessf ully compiled 42 modules\nstep 718\nEXPOSE 3000\nstep 818\nCMD I'node\"\n'distl5erVer. jS\"I\nSuccessf ully built alb2c3d4e5f 6\nSuccessfully tagged myapp: latest"
+  },
+  {
+    "path": "dashboards/dashboard-01.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.1275,
+    "quality_score": 0.5882315833333333,
+    "dup_group": "a8fffd381ffffffff",
+    "mtime": 1770451684.9714043,
+    "ocr_text": "Analytics Dashboard - January 2026\nTOTAL FIEVENUE\nACTIVE USERS\nCHUHN HATE\n$48,291\n8,412\n*12 3Q/D vs last month\n+5.7Q/D vs last month\n-0.3YD vs last month"
+  },
+  {
+    "path": "dashboards/dashboard-03.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.1025,
+    "quality_score": 0.5876398333333333,
+    "dup_group": "abfff8781ffffffff",
+    "mtime": 1770451686.1039195,
+    "ocr_text": "API Performance\nREOUESTS I MIN\nPQ5 LATENCY\nHATE\n12,847\n142ms\n0.129/9\n*22W. peak hour\n-8ms vs yesterday\n+0 03Q/o vs baseline"
+  },
+  {
+    "path": "dashboards/dashboard-02.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.11833333333333333,
+    "quality_score": 0.5887580833333332,
+    "dup_group": "a9fff9381ffffffff",
+    "mtime": 1770451685.538825,
+    "ocr_text": "Deploy Metrics - Production\nDEPLOYS TODAY\nAVG BUILD TIME\nSUCCESS RATE\n14\n2m 34s\n92.89/9\n*3 vs yesterday\n+18s vs last week\n-1.2Q/D vs last week"
+  },
+  {
+    "path": "dashboards/dashboard-05.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.09833333333333333,
+    "quality_score": 0.5885555833333332,
+    "dup_group": "a9fffc381ffffffff",
+    "mtime": 1770451687.1935334,
+    "ocr_text": "Infrastructure - Cluster Health\nCPU USAGE\nMEMORY\nDISK 110\n679/9\n14.2 GB\n340 MB/s\n*12QID vs yesterday\n0132 GB allocated"
+  },
+  {
+    "path": "dashboards/dashboard-04.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.1025,
+    "quality_score": 0.5882308333333333,
+    "dup_group": "a9fff8181ffffffff",
+    "mtime": 1770451686.6496866,
+    "ocr_text": "Marketing - Campaign Overview\nIKIPRESSIONS\nCLICK RATE\nCOST PER CLICK\n245K\n3.29/9\n$0.42\n*18Q/D vs last week\n-$0 08 vs target"
+  },
+  {
+    "path": "errors/http-404.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.10416666666666667,
+    "quality_score": 0.5855210833333333,
+    "dup_group": "a3c1e0e3c00000000",
+    "mtime": 1770451670.6267385,
+    "ocr_text": "404\nPage Not Found\nThe page you're looking lor doesn't exist or has been moved.\nhttps: Ilapi.cloudnova.d8v/dashboard/88ttings"
+  },
+  {
+    "path": "errors/http-403.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.13833333333333334,
+    "quality_score": 0.5878213333333333,
+    "dup_group": "a3c1e1e3c00000000",
+    "mtime": 1770451670.077925,
+    "ocr_text": "403\nForbidden\nYou don't have permission to access this resource. Contact your administrator if you believe this\nis an error.\nhttps: /ls&rvic&.n8xthub.davlapilv21u88rs"
+  },
+  {
+    "path": "errors/http-429.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.13583333333333333,
+    "quality_score": 0.5895043333333333,
+    "dup_group": "a3c1e0e3e00000000",
+    "mtime": 1770451672.2719784,
+    "ocr_text": "429\nToo Many Requests\nRate limit exceeded. Please wait 60 seconds before trying again. Current limit.. 100\nrequestslminute.\nhttps: /ls&rvic&.n8xthub.davlapi188arch"
+  },
+  {
+    "path": "errors/http-401.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.09166666666666666,
+    "quality_score": 0.5843315833333332,
+    "dup_group": "a3c1e0e3c00000000",
+    "mtime": 1770451672.8040478,
+    "ocr_text": "401\nUnauthorized\nYour session has expired. Please sign in again to continue.\nhttps: Ilapi.cloudnova.d8v/apilrn"
+  },
+  {
+    "path": "errors/http-500.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.12666666666666668,
+    "quality_score": 0.5876578333333332,
+    "dup_group": "a3c1e0e3c00000000",
+    "mtime": 1770451671.170747,
+    "ocr_text": "500\nInternal Server Error\nSomething went wrong on our end. Our team has been notified and is working on a fix.\nhttps: Ils&rvic&.n8xthub.davlapilch8ekout"
+  },
+  {
+    "path": "errors/http-503.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.12166666666666667,
+    "quality_score": 0.5882068333333332,
+    "dup_group": "a3c1e0e3c00000000",
+    "mtime": 1770451673.3505046,
+    "ocr_text": "503\nService Unavailable\nWe're currently undergoing scheduled maintenance. Expected completion: 15 minutes.\nhttps: Ilstaging.pix&lwork5. i015tat115"
+  },
+  {
+    "path": "errors/http-502.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.09666666666666666,
+    "quality_score": 0.5857438333333332,
+    "dup_group": "a3c1e0e3c00000000",
+    "mtime": 1770451671.732981,
+    "ocr_text": "502\nBad Gateway\nThe server received an invalid response from an upstream server.\nhttps: Ils&rvic&.n8xthub.davlh&alth"
+  },
+  {
+    "path": "errors/http-408.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.12583333333333332,
+    "quality_score": 0.5876608333333333,
+    "dup_group": "a3c1e0e3c00000000",
+    "mtime": 1770451673.8988202,
+    "ocr_text": "408\nRequest Timeout\nThe server timed out waiting for the request. The operation took longer than 30 seconds.\nhttps: Ilstaging.pix&lwork5. iolapil&xport"
+  },
+  {
+    "path": "confirmations/confirm-01.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.08666666666666667,
+    "quality_score": 0.5833333333333333,
+    "dup_group": "a3c24240000000000",
+    "mtime": 1770451690.5045004,
+    "ocr_text": "Email Verif led\nYour em&1 address has b88n confimi8d.\nYrAJ can now access all feature5 of your accrAJnt."
+  },
+  {
+    "path": "confirmations/confirm-02.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.1025,
+    "quality_score": 0.5855143333333332,
+    "dup_group": "a3c24243c00000000",
+    "mtime": 1770451691.0477931,
+    "ocr_text": "Verification Code\nEnter this cod8 to complete sign-in.\n112925\nThis r%)de expires in 10 minutes. Do not share itwith Anyone."
+  },
+  {
+    "path": "confirmations/confirm-03.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.11916666666666667,
+    "quality_score": 0.5876848333333332,
+    "dup_group": "affe7e7ffffffffff",
+    "mtime": 1770451691.5972989,
+    "ocr_text": "Booking Confirmed\nYour reservation al Hot81 Lumi\u00e8r8 Is conlim8d.\nBK-ICCILDVW\ned(4n'. Feb 15, 2026. Ched(4xrt.. Feb 18, 2028. 1 r\uffff)ffl, 2 guests"
+  },
+  {
+    "path": "confirmations/confirm-07.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.09333333333333334,
+    "quality_score": 0.5861983333333333,
+    "dup_group": "a3c24240000000000",
+    "mtime": 1770451693.7970335,
+    "ocr_text": "Payment Successful\nYour payment ol $49.99 has b88n proc8s88d.\nTransaction lD..TXN4WGQTJQ2Kl\uffff. Visaending in 3281"
+  },
+  {
+    "path": "confirmations/confirm-06.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.095,
+    "quality_score": 0.5872475833333333,
+    "dup_group": "a3c24243c00000000",
+    "mtime": 1770451693.2467735,
+    "ocr_text": "Flight Booked\nSFO -p NRT . F8b 20. 2026\nFLT-CIFIIM\nDepariure.. 11..45\uffff\uffff. Arrivd.. 4..30 PM+1 . E\uffffnoMy. 1 passenger"
+  },
+  {
+    "path": "confirmations/confirm-04.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.1025,
+    "quality_score": 0.5896100833333333,
+    "dup_group": "affe7e7ffffffffff",
+    "mtime": 1770451692.1401873,
+    "ocr_text": "Order Confirmed\nYour order has b88n placed successlulty.\nORD-UF50VAIW4G\nEstimated delwery.. Feb 12-14, 2026.Total.. $127.4S"
+  },
+  {
+    "path": "confirmations/confirm-05.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.11166666666666666,
+    "quality_score": 0.5867023333333332,
+    "dup_group": "affe7e7ffffffffff",
+    "mtime": 1770451692.6975207,
+    "ocr_text": "Two-Factor Authentication\nEnter Ih8 cod8 from your aulh8nticator app.\n577759\nIfyW\uffffl0St access tsywr aUthentic\ufffftOr, use a recovery wde."
+  },
+  {
+    "path": "messaging/chat-02.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.365,
+    "quality_score": 0.6049123333333333,
+    "dup_group": "a8f8f8f8f8fdfffff",
+    "mtime": 1770451688.3094203,
+    "ocr_text": "# ggngral\n# releases\n# prcxluct\nRlley Zhang J 15 PM\nv2.4.0 Is liv81 Release notes.. hty)sJldocs.example.comlrel&asesf2.4\n# sUp\uffffrt\n# rgba8e$\nTaylor Nguyen 3.\"18 PM\nNic81 The n8w s&arch filters ar8 already getting \uffffs1\uffff\"Ve feedback from b8ta\nUS8rs.\n# watgrcoolgr\nQulnn Davls J 22 PM\nAny known issu88 W8 should watch for7\nRlley Zhang J 24 PM\nOne 8dge cas8 Wlth date filtering on Salari. FLK is in v2.4.1 which ships\ntomrrow.\nM888age #relea888"
+  },
+  {
+    "path": "messaging/chat-03.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.4508333333333333,
+    "quality_score": 0.6119068333333333,
+    "dup_group": "a8f8f8f8f8fdfffff",
+    "mtime": 1770451688.8671622,
+    "ocr_text": "# tgam-alpha\n# teamvalpha\n# tsam.beta\nCasey Partt & 05 AM\nSiandup.. Yesterday I fin18hed the payment integration t&sts. Today workiro on\nwebhook retry logic.\n# announc9ments\n# hglp4J98k\nMorgan Lee 9 06AM\nStandup.. R8Vi8wed 3 PRS. Today.. fin18hing the Cachi\uffff layer for the search\nAPI.\n# 80cial\nAlex Chen o OSA\nSiandup.. DebU\uffffing Ih& memory leak In the worf(er proc888. Found the ISSU8\nnnection pwl not releasing.\nSam Rlvera 9 10AM\nSiandup.. Design r8Vi8w for Ih8 new Onboard1\uffff flow. Will share mockups In\n#design by EOD.\nM888age lrteam-alpha"
+  },
+  {
+    "path": "messaging/chat-01.png",
+    "width": 1440,
+    "height": 900,
+    "textiness": 0.405,
+    "quality_score": 0.6067828333333333,
+    "dup_group": "a8f8f8f8f8fdfffff",
+    "mtime": 1770451687.746358,
+    "ocr_text": "# g8n8ral\n# engineering\n# ervJlneerlrwJ\nAlex Chen 10 J2AM\nJust pushed the auth fix. Can someone revi\uffff PR #2477\n# d9$VJTh\n# random\nJordan Klm 10 34AM\nOn it. Is li Iu8t Ih& token refr88h logic?\n# strTh\uffffp\nAlox Chon 10\nYeah, plus a migration for the session8 table. Should b& backwards compatibl8.\nSam Rlvera 10 41 AM\nFYI th8 8taging deploy is stuck. Look8 like the DB m\uffffration 18 t.ming out.\nMorgan Lee 10.43AM\nI'll check the connection pool. W& hit this last W88ktoo.\nM888age #8ngln88rlng"
+  }
+]

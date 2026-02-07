@@ -32,6 +32,28 @@
   let showSuggestions = false;
   let artSearchRef: ArtSearch | null = null;
 
+  // Feedback toast — show after 5 searches
+  let searchCount = 0;
+  let showFeedbackToast = false;
+  let feedbackDismissed = false;
+
+  function onSearchPerformed() {
+    searchCount++;
+    if (searchCount >= 5 && !feedbackDismissed && !showFeedbackToast) {
+      showFeedbackToast = true;
+    }
+  }
+
+  function dismissFeedback() {
+    showFeedbackToast = false;
+    feedbackDismissed = true;
+  }
+
+  // Listen for search events from ArtSearch
+  if (typeof window !== "undefined") {
+    window.addEventListener("merlian-search-performed", () => onSearchPerformed());
+  }
+
   // Commercial UX principle:
   // - The app surface is for search/browse.
   // - Library/indexing controls live behind an explicit "Library" modal.
@@ -401,6 +423,35 @@
   <button class="logo-btn text-3xl fontvar-heading" on:click={() => (welcome = true)}>merlian</button>
 </div>
 
+<!-- Feedback toast -->
+{#if showFeedbackToast}
+  <div class="fixed z-[80] bottom-6 right-6 max-w-sm bg-white border border-neutral-200 shadow-lg rounded-xl p-4 animate-slide-up">
+    <div class="flex items-start gap-3">
+      <div class="flex-1">
+        <div class="text-sm font-medium text-neutral-900">Finding useful things?</div>
+        <div class="text-xs text-neutral-500 mt-1">We'd love 2 minutes of your feedback to make Merlian better.</div>
+        <div class="flex gap-2 mt-3">
+          <a
+            href="https://tally.so/r/merlian-feedback"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="px-3 py-1.5 text-xs font-medium bg-black text-white rounded-lg hover:bg-neutral-800"
+          >
+            Share feedback
+          </a>
+          <button
+            class="px-3 py-1.5 text-xs text-neutral-500 hover:text-neutral-700"
+            on:click={dismissFeedback}
+          >
+            Maybe later
+          </button>
+        </div>
+      </div>
+      <button class="text-neutral-400 hover:text-neutral-600 text-lg leading-none" on:click={dismissFeedback}>&times;</button>
+    </div>
+  </div>
+{/if}
+
 <style lang="postcss">
   .logo-btn {
     outline: none;
@@ -409,5 +460,20 @@
 
   .logo-btn:hover {
     text-shadow: 0 0 6px rgba(0, 0, 0, 25%);
+  }
+
+  :global(.animate-slide-up) {
+    animation: slideUp 0.3s ease-out;
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 </style>

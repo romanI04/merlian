@@ -782,6 +782,135 @@ def search(req: SearchRequest) -> dict[str, Any]:
     return {"results": results, "matched_tokens": q_tokens}
 
 
+# ── Demo search (pre-computed, no live index needed) ──────────────────────────
+
+DEMO_CATALOG: list[dict] | None = None
+DEMO_EMBEDDINGS: Any = None
+DEMO_DIR = Path(__file__).parent.parent / "demo-dataset"
+
+def _load_demo_data():
+    global DEMO_CATALOG, DEMO_EMBEDDINGS
+    if DEMO_CATALOG is not None:
+        return
+    catalog_path = DEMO_DIR / "demo-catalog.json"
+    emb_path = DEMO_DIR / "demo-embeddings.npy"
+    if not catalog_path.exists() or not emb_path.exists():
+        return
+    import json as _json
+    with open(catalog_path) as f:
+        DEMO_CATALOG = _json.load(f)
+    emb = core.np.load(str(emb_path))
+    # Normalize for cosine similarity
+    norms = core.np.linalg.norm(emb, axis=1, keepdims=True)
+    norms[norms == 0] = 1
+    DEMO_EMBEDDINGS = emb / norms
+
+
+@app.post("/demo-search")
+def demo_search(req: SearchRequest):
+    _load_demo_data()
+    if DEMO_CATALOG is None or DEMO_EMBEDDINGS is None:
+        raise HTTPException(status_code=503, detail="Demo data not available. Run export_demo_index.py first.")
+
+    if req.device == "auto":
+        device = "mps" if core.torch.backends.mps.is_available() else "cpu"
+    else:
+        device = req.device
+    model_name = "ViT-B-32"
+    pretrained = "laion2b_s34b_b79k"
+    _, _, model, tokenizer = _get_model(device, model_name, pretrained)
+
+    # Encode query with CLIP
+    tokens = tokenizer([req.query])
+    with core.torch.no_grad():
+        text_features = model.encode_text(tokens.to(device))
+    text_features = text_features.cpu().numpy().astype("float32")
+    text_features /= core.np.linalg.norm(text_features, axis=1, keepdims=True)
+
+    # CLIP similarity
+    clip_scores = (DEMO_EMBEDDINGS @ text_features.T).flatten()
+
+    # OCR scoring
+    q_lower = req.query.lower()
+    q_tokens = re.findall(r'\w+', q_lower)
+    n = len(DEMO_CATALOG)
+    ocr_scores = core.np.zeros(n, dtype="float32")
+    for i, item in enumerate(DEMO_CATALOG):
+        ocr_text = (item.get("ocr_text") or "").lower()
+        if not ocr_text or not q_tokens:
+            continue
+        # Simple token match scoring
+        matches = sum(1 for t in q_tokens if t in ocr_text)
+        if matches > 0:
+            ocr_scores[i] = matches / len(q_tokens)
+
+    # Hybrid scoring with quality signals
+    base_w = float(req.ocr_weight)
+    has_digits = any(ch.isdigit() for ch in req.query)
+    texty_keywords = ["error", "code", "http", "receipt", "total", "$", "invoice"]
+    if has_digits or any(k in q_lower for k in texty_keywords):
+        base_w = max(base_w, 0.80)
+
+    textiness_arr = core.np.array([item.get("textiness", 0.0) for item in DEMO_CATALOG], dtype="float32")
+    quality_arr = core.np.array([item.get("quality_score", 0.5) for item in DEMO_CATALOG], dtype="float32")
+
+    w_per = core.np.clip(base_w + 0.25 * textiness_arr, 0.0, 1.0)
+    scores = (1.0 - w_per) * clip_scores + w_per * ocr_scores
+    scores *= (0.3 + 0.7 * quality_arr)
+
+    # Top-k
+    k = min(req.k, n)
+    topk = core.np.argsort(-scores)[:k]
+
+    results = []
+    for idx in topk:
+        idx = int(idx)
+        item = DEMO_CATALOG[idx]
+        ocr_text = (item.get("ocr_text") or "").replace("\n", " ").strip()
+        if len(ocr_text) > 300:
+            ocr_text = ocr_text[:300] + "…"
+        matched = [t for t in q_tokens if t in (item.get("ocr_text") or "").lower()] if q_tokens else []
+        rel_path = item["path"]
+        results.append({
+            "path": rel_path,
+            "score": float(scores[idx]),
+            "clip": float(clip_scores[idx]),
+            "ocr": float(ocr_scores[idx]),
+            "ocr_preview": ocr_text,
+            "matched_tokens": matched,
+            "width": item.get("width", 1440),
+            "height": item.get("height", 900),
+            "file_size": 0,
+            "created_at": item.get("mtime", 0),
+            "folder": str(Path(rel_path).parent),
+            "thumb_url": f"/demo-thumb?path={rel_path}",
+        })
+
+    return {"results": results, "matched_tokens": q_tokens}
+
+
+@app.get("/demo-thumb")
+def demo_thumb(path: str, width: int = 400) -> Response:
+    # Serve thumbnail from demo-dataset directory
+    safe_path = path.replace("..", "").lstrip("/")
+    full_path = DEMO_DIR / safe_path
+    if not full_path.exists() or not full_path.is_file():
+        raise HTTPException(status_code=404, detail="not found")
+    # Ensure path is within demo-dataset
+    try:
+        full_path.resolve().relative_to(DEMO_DIR.resolve())
+    except ValueError:
+        raise HTTPException(status_code=403, detail="forbidden")
+    try:
+        img = Image.open(full_path).convert("RGB")
+        img.thumbnail((width, width))
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=85)
+        return Response(content=buf.getvalue(), media_type="image/jpeg")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"cannot render: {e}")
+
+
 # Static file serving: serve built frontend from FastAPI when MERLIAN_SERVE_FRONTEND=1
 # This allows single-process deployment (one port for API + frontend).
 if os.environ.get("MERLIAN_SERVE_FRONTEND") == "1":
