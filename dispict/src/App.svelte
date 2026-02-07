@@ -272,30 +272,44 @@
 <Welcome open={welcome} {mode} on:close={() => (welcome = false)} />
 
 {#if mode === "demo"}
-  <div class="fixed z-50 top-0 left-0 right-0 px-4 py-2 text-xs sm:text-sm bg-white/80 backdrop-blur border-b border-neutral-200">
-    <div class="max-w-3xl mx-auto text-neutral-700 flex items-center justify-between gap-4">
-      <div class="truncate">
-        <span class="font-medium">Merlian demo</span> — curated screenshot gallery.
-      </div>
-
-      <div class="flex items-center gap-4">
-        <a class="underline underline-offset-2" href="#/local">Search my library</a>
+  <nav class="fixed z-50 top-0 left-0 right-0 h-11 px-4 bg-white/70 backdrop-blur-lg border-b border-neutral-100">
+    <div class="h-full max-w-5xl mx-auto flex items-center justify-between">
+      <button class="flex items-center gap-2 hover:opacity-70 transition-opacity" on:click={() => (welcome = true)}>
+        <span class="text-sm font-semibold tracking-tight text-neutral-900">merlian</span>
+        <span class="text-[11px] px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-500 font-medium">demo</span>
+      </button>
+      <div class="flex items-center gap-1">
+        <a
+          href="#/local"
+          class="text-xs px-3 py-1.5 rounded-lg text-neutral-600 hover:bg-neutral-100 transition-colors font-medium"
+        >
+          Search my library
+        </a>
       </div>
     </div>
-  </div>
+  </nav>
 {:else}
-  <div class="fixed z-50 top-0 left-0 right-0 px-4 py-2 text-xs sm:text-sm bg-white/80 backdrop-blur border-b border-neutral-200">
-    <div class="max-w-3xl mx-auto text-neutral-700 flex items-center justify-between gap-4">
-      <div class="truncate">
-        <span class="font-medium">Merlian</span> — your screenshots, searchable.
-      </div>
-
-      <div class="flex items-center gap-4">
-        <button class="underline underline-offset-2" on:click={() => (showLibrary = true)}>Library</button>
-        <a class="underline underline-offset-2" href="#/demo">Demo</a>
+  <nav class="fixed z-50 top-0 left-0 right-0 h-11 px-4 bg-white/70 backdrop-blur-lg border-b border-neutral-100">
+    <div class="h-full max-w-5xl mx-auto flex items-center justify-between">
+      <button class="flex items-center gap-2 hover:opacity-70 transition-opacity" on:click={() => (welcome = true)}>
+        <span class="text-sm font-semibold tracking-tight text-neutral-900">merlian</span>
+      </button>
+      <div class="flex items-center gap-1">
+        <button
+          class="text-xs px-3 py-1.5 rounded-lg text-neutral-600 hover:bg-neutral-100 transition-colors font-medium"
+          on:click={() => (showLibrary = true)}
+        >
+          Library
+        </button>
+        <a
+          href="#/demo"
+          class="text-xs px-3 py-1.5 rounded-lg text-neutral-600 hover:bg-neutral-100 transition-colors font-medium"
+        >
+          Demo
+        </a>
       </div>
     </div>
-  </div>
+  </nav>
 {/if}
 
 <!-- Main app surface: search/browse only -->
@@ -419,9 +433,6 @@
   </div>
 {/if}
 
-<div class="absolute top-12 left-4 sm:top-16 sm:left-8">
-  <button class="logo-btn text-3xl fontvar-heading" on:click={() => (welcome = true)}>merlian</button>
-</div>
 
 <!-- Feedback toast -->
 {#if showFeedbackToast}
@@ -453,15 +464,6 @@
 {/if}
 
 <style lang="postcss">
-  .logo-btn {
-    outline: none;
-    transition: text-shadow 200ms;
-  }
-
-  .logo-btn:hover {
-    text-shadow: 0 0 6px rgba(0, 0, 0, 25%);
-  }
-
   :global(.animate-slide-up) {
     animation: slideUp 0.3s ease-out;
   }

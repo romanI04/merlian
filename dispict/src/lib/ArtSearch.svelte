@@ -276,10 +276,10 @@
 
 {#if selected}
   <aside
-    class="absolute z-20 inset-y-0 right-0 backdrop-blur border-l shadow-xl overflow-y-auto {mode === 'local' ? 'bg-stone-900/95 border-stone-700' : 'bg-white/90 border-neutral-200'}"
+    class="absolute z-20 inset-y-0 right-0 backdrop-blur-lg border-l shadow-xl overflow-y-auto {mode === 'local' ? 'bg-stone-900/95 border-stone-700' : 'bg-white/95 border-neutral-100'}"
     style:width="calc(min(100vw, {SIDEBAR_WIDTH}px))"
     transition:fly={{ x: SIDEBAR_WIDTH, y: 0, duration: 300, easing: cubicOut }}
   >
-    <Sidebar artwork={selected} {query} on:close={() => (selected = null)} />
+    <Sidebar artwork={selected} {query} {mode} on:close={() => (selected = null)} />
   </aside>
 {/if}

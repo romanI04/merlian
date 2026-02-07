@@ -58,7 +58,7 @@
     out:fade={{ duration: 150 }}
   >
     <div
-      class="radial-gradient relative z-30 w-[360px] h-[360px] rounded-full"
+      class="radial-gradient relative z-30 w-[420px] h-[420px] rounded-full"
       style:left="{$mouseX}px"
       style:top="{$mouseY}px"
       style:transform="translate(-50%, -50%)"
@@ -69,8 +69,8 @@
 {#if open}
   <div
     class="fixed z-40 inset-3 sm:inset-6 md:inset-8 rounded-2xl
-    backdrop-blur-lg border border-gray-300 bg-gray-50/75
-    flex flex-col justify-between items-center px-4 sm:px-6 overflow-y-auto"
+    backdrop-blur-xl border border-white/40 bg-white/60
+    flex flex-col justify-center items-center px-4 sm:px-6 overflow-y-auto"
     on:mousemove={handleMouse}
     on:wheel={handleWheel}
     in:fade={{ duration: 200 }}
@@ -79,55 +79,79 @@
     bind:this={welcomeEl}
   >
     {#if init}
-      <div class="py-8">
-        <h2
-          class="text-center text-4xl sm:text-5xl fontvar-heading mb-2 sm:mb-4"
-          in:fade={{ delay: 300 }}
-        >
-          merlian
-        </h2>
+      <!-- Wordmark -->
+      <div class="mb-2" in:fade={{ delay: 200 }}>
+        <span class="text-sm font-medium tracking-[0.2em] uppercase text-neutral-400">merlian</span>
       </div>
 
-      <div class="max-w-2xl text-center">
-        <p
-          class="tagline text-4xl md:text-5xl lg:text-6xl xl:text-7xl"
-          in:fade={{ delay: 800 }}
+      <!-- Hero headline -->
+      <div class="max-w-3xl text-center mb-8">
+        <h1
+          class="hero-headline text-[clamp(2rem,6vw,4.5rem)] leading-[1.05] tracking-tight"
+          in:fade={{ delay: 500 }}
         >
           Every screenshot you've ever taken.
-          <span class="text-[105%] font-serif italic">Findable in seconds.</span>
-        </p>
+          <span class="hero-italic">Findable in seconds.</span>
+        </h1>
 
-        <p class="mt-6 text-lg text-gray-600 max-w-lg mx-auto" in:fade={{ delay: 1200 }}>
-          Error messages, receipts, confirmation codes, meeting notes —
-          type what you remember. Nothing leaves your machine.
+        <p class="mt-5 text-base sm:text-lg text-neutral-500 max-w-xl mx-auto leading-relaxed" in:fade={{ delay: 900 }}>
+          Error messages, receipts, confirmation codes, meeting notes — type what you remember. AI finds the exact image.
         </p>
       </div>
 
-      <div class="py-10 flex flex-col items-center gap-3" in:fade={{ delay: 1800 }}>
+      <!-- Search preview mockup -->
+      <div class="w-full max-w-md mb-8" in:fade={{ delay: 1200 }}>
+        <div class="search-mockup rounded-xl bg-white/80 border border-neutral-200/60 shadow-lg px-4 py-3">
+          <div class="flex items-center gap-3">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-400 flex-shrink-0"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <span class="text-neutral-400 text-base">error 403 forbidden...</span>
+          </div>
+          <div class="flex gap-2 mt-2.5">
+            <span class="text-[11px] px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-500">receipt total</span>
+            <span class="text-[11px] px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-500">confirmation code</span>
+            <span class="text-[11px] px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-500">deploy failed</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- CTAs -->
+      <div class="flex flex-col sm:flex-row items-center gap-3 mb-6" in:fade={{ delay: 1500 }}>
         <button
-          class="rounded-full px-6 py-2.5 bg-black text-white text-lg
-          hover:bg-white hover:text-black hover:ring-1 hover:ring-black
-          active:bg-rose-100 active:text-black active:ring-1 active:ring-black transition-colors"
+          class="group rounded-full px-8 py-3 bg-black text-white text-base font-medium
+          hover:bg-neutral-800 active:scale-[0.98] transition-all shadow-lg shadow-black/10"
           on:click={() => {
             window.location.hash = "#/demo";
             dispatch("close");
           }}
         >
           Try the demo
+          <span class="inline-block ml-1 group-hover:translate-x-0.5 transition-transform">&rarr;</span>
         </button>
         <button
-          class="rounded-full px-6 py-2.5 bg-white text-black text-lg ring-1 ring-black/20
-          hover:ring-black hover:bg-neutral-50 transition-colors"
+          class="rounded-full px-8 py-3 text-neutral-700 text-base font-medium
+          bg-white/80 ring-1 ring-neutral-200
+          hover:ring-neutral-400 hover:bg-white active:scale-[0.98] transition-all"
           on:click={() => {
             window.location.hash = "#/local";
             dispatch("close");
           }}
         >
-          Search my own library
+          Search my library
         </button>
-        <p class="mt-2 text-xs text-gray-500 max-w-md text-center">
-          100% local. No cloud. No account. Your files never leave your machine.
-        </p>
+      </div>
+
+      <!-- Trust line -->
+      <div class="flex items-center gap-4 text-xs text-neutral-400" in:fade={{ delay: 1800 }}>
+        <span class="flex items-center gap-1.5">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          100% local
+        </span>
+        <span class="w-px h-3 bg-neutral-300"></span>
+        <span>No cloud</span>
+        <span class="w-px h-3 bg-neutral-300"></span>
+        <span>No account</span>
+        <span class="w-px h-3 bg-neutral-300"></span>
+        <span>Files never leave your machine</span>
       </div>
     {/if}
   </div>
@@ -137,18 +161,32 @@
   .radial-gradient {
     background: radial-gradient(
       circle at center,
-      theme(colors.indigo.600) 0,
-      theme(colors.blue.700) 20%,
-      theme(colors.green.600) 40%,
-      theme(colors.orange.500) 50%,
-      theme(colors.pink.500) 60%,
+      theme(colors.violet.500) 0,
+      theme(colors.blue.500) 25%,
+      theme(colors.cyan.400) 45%,
+      theme(colors.emerald.400) 60%,
       #ffffff00 100%
     );
-    opacity: 60%;
+    opacity: 35%;
+    filter: blur(40px);
   }
 
-  p.tagline {
+  .hero-headline {
     font-variation-settings: "GRAD" 150, "YOPQ" 50, "XTRA" 500, "YTLC" 570;
-    @apply tracking-tight;
+    color: theme(colors.neutral.900);
+  }
+
+  .hero-italic {
+    font-family: "Source Serif 4", Georgia, serif;
+    font-style: italic;
+    font-size: 105%;
+    background: linear-gradient(135deg, theme(colors.violet.600), theme(colors.blue.600));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .search-mockup {
+    backdrop-filter: blur(12px);
   }
 </style>
