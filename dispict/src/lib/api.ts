@@ -101,6 +101,7 @@ export async function loadSuggestions(
     const data = await resp.json();
     const results = (data?.results ?? []) as Array<any>;
 
+    const total = results.length || 1;
     return results.map((r, i) => {
       const w = r.width ?? 1200;
       const h = r.height ?? 800;
@@ -108,6 +109,8 @@ export async function loadSuggestions(
       const filename = path.split("/").slice(-1)[0] ?? path;
       const ocrText = (r.ocr_preview as string) || "";
       const ocrWordCount = ocrText.trim() ? ocrText.trim().split(/\s+/).length : 0;
+      // Scale top results larger, tail results smaller (creates size variation for tight packing)
+      const rankScale = 1.3 - 0.7 * (i / total);
 
       const artwork: Artwork = {
         id: i,
@@ -122,8 +125,8 @@ export async function loadSuggestions(
             : ""),
 
         dimensions: `${w}×${h}px`,
-        dimheight: h / 200,
-        dimwidth: w / 200,
+        dimheight: (h / 55) * rankScale,
+        dimwidth: (w / 55) * rankScale,
 
         title: filename,
         description: ocrText || null,
@@ -180,6 +183,7 @@ export async function loadSuggestions(
 
   const data = await resp.json();
   const results = (data?.results ?? []) as Array<any>;
+  const demoTotal = results.length || 1;
 
   return results.map((r: any, i: number) => {
     const w = r.width ?? 1440;
@@ -188,6 +192,8 @@ export async function loadSuggestions(
     const filename = path.split("/").slice(-1)[0] ?? path;
     const ocrText = (r.ocr_preview as string) || "";
     const ocrWordCount = ocrText.trim() ? ocrText.trim().split(/\s+/).length : 0;
+    // Scale top results larger, tail results smaller (creates size variation for tight packing)
+    const rankScale = 1.3 - 0.7 * (i / demoTotal);
 
     const artwork: Artwork = {
       id: i,
@@ -202,8 +208,8 @@ export async function loadSuggestions(
           : ""),
 
       dimensions: `${w}×${h}px`,
-      dimheight: h / 200,
-      dimwidth: w / 200,
+      dimheight: (h / 55) * rankScale,
+      dimwidth: (w / 55) * rankScale,
 
       title: filename,
       description: ocrText || null,

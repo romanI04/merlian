@@ -56,7 +56,8 @@ class MultisizeImage {
     //   }
     //   return best ? $widths.get(best)! : null;
     // });
-    return readable(`${this.url}?width=${width}`);
+    const separator = this.url.includes("?") ? "&" : "?";
+    return readable(`${this.url}${separator}width=${width}`);
   }
 }
 

@@ -6,9 +6,9 @@ import type { Artwork } from "./api";
 
 export const PIXELS_PER_CM = 8;
 
-const radiusChange = 5;
+const radiusChange = 3;
 const angleChange = (Math.sqrt(5) - 1) * Math.PI;
-const spaceBuffer = 3;
+const spaceBuffer = 0.8;
 
 /**
  * Returns geometric positions (in cm) for the center of each artwork.
@@ -20,10 +20,10 @@ export function layoutArtwork(pieces: Artwork[]): [number, number][] {
   const positions: [number, number][] = [];
   const tree = new RBush<BBox>();
   tree.insert({
-    minX: -25,
-    minY: -15,
-    maxX: 25,
-    maxY: 15,
+    minX: -28,
+    minY: -8,
+    maxX: 28,
+    maxY: 8,
   });
   let iteration = 0;
   for (const artwork of pieces) {
